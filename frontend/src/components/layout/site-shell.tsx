@@ -1,11 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { FancyRouteTabs, NavigationChrome } from "@/components/layout/navigation-chrome";
+import { NavigationChrome } from "@/components/layout/navigation-chrome";
 import type { HeroStat, Panel } from "@/lib/constants/site-data";
 
 const shellFrame = "mx-auto w-full max-w-[1840px] px-4 sm:px-6 lg:px-8";
@@ -28,7 +27,11 @@ type HeroProps = {
 export function SiteShell({ children }: ShellProps) {
   const pathname = usePathname();
 
-  if (pathname === "/") {
+  const isHome = pathname === "/";
+  const isDashboard = pathname.startsWith("/admin") || pathname.startsWith("/teacher") || pathname.startsWith("/student");
+  const isLogin = pathname === "/login";
+
+  if (isHome || isDashboard || isLogin) {
     return <>{children}</>;
   }
 
@@ -38,7 +41,7 @@ export function SiteShell({ children }: ShellProps) {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[32rem] bg-[radial-gradient(circle_at_top,rgba(232,160,32,0.18),transparent_52%),radial-gradient(circle_at_18%_18%,rgba(255,246,233,0.82),transparent_32%)]" />
       <div className="relative z-10">
         <NavigationChrome />
-        {children}
+        <main>{children}</main>
         <SiteFooter />
       </div>
     </div>
@@ -100,218 +103,51 @@ export function HeroSection({
   );
 }
 
-export function PanelGrid({ panels }: { panels: Panel[] }) {
+export function FeaturePanel({ panels }: { panels: Panel[] }) {
   return (
-    <section className={`${shellFrame} pb-16`}>
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+    <section className={`${shellFrame} py-12 md:py-24`}>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {panels.map((panel) => (
-          <article
+          <div
             key={panel.title}
-            className={`rounded-[2rem] border p-6 shadow-soft ${
+            className={`group relative overflow-hidden rounded-[2rem] border p-8 transition hover:shadow-soft ${
               panel.tone === "accent"
                 ? "border-[#E8A020]/20 bg-[#1A1A2E] text-white"
                 : panel.tone === "warm"
                   ? "border-orange-300/35 bg-orange-50"
-                  : "border-foreground/10 bg-white/80"
+                  : "border-foreground/5 bg-white dark:bg-white/5"
             }`}
           >
-            <h2 className="font-serif text-3xl">{panel.title}</h2>
-            <p
-              className={`mt-4 text-base leading-7 ${
-                panel.tone === "accent" ? "text-white/82" : "text-muted-foreground"
-              }`}
-            >
+            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-foreground/5 font-serif text-xl text-foreground transition group-hover:scale-110">
+              {panel.title.slice(0, 1)}
+            </div>
+            <h3 className="font-serif text-2xl">{panel.title}</h3>
+            <p className={`mt-4 ${panel.tone === "accent" ? "text-white/75" : "text-muted-foreground"}`}>
               {panel.body}
             </p>
-          </article>
+          </div>
         ))}
       </div>
     </section>
   );
 }
 
-export function DashboardShowcase() {
-  return (
-    <section className={`${shellFrame} pb-20`}>
-      <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="rounded-[2rem] border border-foreground/10 bg-white/80 p-6 shadow-glow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Live workspace preview</p>
-              <h2 className="mt-3 font-serif text-4xl">One product, three role-aware rhythms.</h2>
-            </div>
-            <div className="rounded-full border border-foreground/10 px-4 py-2 text-sm text-muted-foreground">
-              Updated 2 min ago
-            </div>
-          </div>
-
-          <div className="mt-8 grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-[1.6rem] bg-[#1A1A2E] p-5 text-white">
-              <div className="flex items-center justify-between">
-                <span className="text-sm uppercase tracking-[0.22em] text-white/70">Admin pulse</span>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs">Healthy</span>
-              </div>
-              <div className="mt-8 grid grid-cols-3 gap-3">
-                {[
-                  ["MRR", "$184k"],
-                  ["Tenants", "312"],
-                  ["Tickets", "92"]
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-[1.25rem] bg-white/8 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/60">{label}</p>
-                    <p className="mt-2 text-2xl font-semibold">{value}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 h-32 rounded-[1.5rem] bg-[linear-gradient(120deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] p-4">
-                <div className="flex h-full items-end gap-3">
-                  {[48, 64, 58, 76, 82, 68, 91].map((height, index) => (
-                    <div key={index} className="flex-1 rounded-t-full bg-gradient-to-t from-[#E8A020] to-white/90" style={{ height: `${height}%` }} />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {[
-                ["Teacher queue", "48 submissions need review", "bg-orange-50 border-orange-200/70"],
-                ["Student motion", "72% average progress this cohort", "bg-white border-foreground/10 dark:border-white/8 dark:bg-white/5"],
-                ["Certificates", "1,946 issued this month", "bg-emerald-50 border-emerald-200/70"]
-              ].map(([title, body, tone]) => (
-                <div key={title} className={`rounded-[1.5rem] border p-5 shadow-soft ${tone}`}>
-                  <p className="text-sm font-semibold">{title}</p>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-5">
-          <div className="relative overflow-hidden rounded-[2rem] border border-foreground/10 bg-stone-950 p-6 text-white shadow-glow">
-            <div className="absolute -right-8 top-6 h-36 w-36 rounded-full bg-orange-400/35 blur-3xl" />
-            <p className="text-xs uppercase tracking-[0.25em] text-white/60">Brandable product surface</p>
-            <h3 className="mt-3 max-w-md font-serif text-4xl">A public-facing experience that still feels premium and operational.</h3>
-            <p className="mt-4 max-w-lg text-white/72">
-              The homepage, catalog, auth flows, and dashboards now share one design language instead of breaking into unrelated screens.
-            </p>
-            <div className="mt-8 overflow-hidden rounded-[1.5rem] border border-white/10">
-              <Image
-                src="/hero-learning-meeting.jpg"
-                alt="Students collaborating in a modern learning environment"
-                width={1400}
-                height={900}
-                className="h-72 w-full object-cover"
-                priority
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-3">
-            {[
-              ["Catalog", "/catalog", "Public discovery"],
-              ["Teacher", "/teacher/dashboard", "Delivery workspace"],
-              ["Student", "/student/dashboard", "Learner hub"]
-            ].map(([label, href, text]) => (
-              <Link key={href} href={href} className="rounded-[1.6rem] border border-foreground/10 bg-white/80 p-5 shadow-soft transition hover:-translate-y-1">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{text}</p>
-                <p className="mt-3 font-serif text-3xl">{label}</p>
-                <p className="mt-3 text-sm text-muted-foreground">Open this workspace</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export function HighlightStrip({
-  items
-}: {
-  items: Array<{ title: string; body: string }>;
-}) {
-  return (
-    <section className={`${shellFrame} pb-16`}>
-      <div className="grid gap-5 md:grid-cols-3">
-        {items.map((item, index) => (
-          <article
-            key={item.title}
-            className="rounded-[1.8rem] border border-foreground/10 bg-white/75 p-6 shadow-soft backdrop-blur dark:border-white/8 dark:bg-white/5"
-            style={{ animationDelay: `${index * 120}ms` }}
-          >
-            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">0{index + 1}</p>
-            <h2 className="mt-4 font-serif text-3xl">{item.title}</h2>
-            <p className="mt-4 text-base leading-7 text-muted-foreground">{item.body}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-export function RouteLinks({
-  title,
-  links
-}: {
-  title: string;
-  links: Array<{ href: string; label: string }>;
-}) {
-  return <FancyRouteTabs title={title} links={links} />;
-}
+export const PanelGrid = FeaturePanel;
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-[#E8A020]/15 bg-[#1A1A2E] text-white">
-      <div className="mx-auto grid w-full max-w-[1840px] gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
-        <div>
-          <p className="font-serif text-[2.35rem] leading-none sm:text-[2.75rem]">Smart LMS</p>
-          <p className="mt-5 max-w-lg text-[14px] leading-8 text-white/72 sm:text-[15px]">
-            Multi-tenant SaaS LMS frontend aligned to the SRS: course delivery, AI assessment, live classes,
-            compliance reporting, certificates, and subscription billing.
-          </p>
+    <footer className="border-t border-foreground/5 bg-white/50 py-12 backdrop-blur dark:bg-black/20">
+      <div className={`${shellFrame} flex flex-col items-center justify-between gap-6 md:flex-row`}>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-background font-serif text-lg font-bold">SL</div>
+          <span className="font-serif text-xl">Smart LMS</span>
         </div>
-
-        <div className="grid gap-10 sm:grid-cols-2 xl:grid-cols-4">
-          <div>
-            <p className="text-[14px] font-semibold uppercase tracking-[0.2em] text-[#E8A020]">Platform</p>
-            <div className="mt-5 grid gap-3 text-[14px] leading-7 text-white/72">
-              <Link href="/admin/dashboard" className="transition hover:text-white">Admin Dashboard</Link>
-              <Link href="/admin/branding" className="transition hover:text-white">White-label Branding</Link>
-              <Link href="/admin/billing" className="transition hover:text-white">Billing</Link>
-              <Link href="/admin/audit-logs" className="transition hover:text-white">Audit Logs</Link>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-[14px] font-semibold uppercase tracking-[0.2em] text-[#E8A020]">Learning</p>
-            <div className="mt-5 grid gap-3 text-[14px] leading-7 text-white/72">
-              <Link href="/teacher/courses" className="transition hover:text-white">Course Builder</Link>
-              <Link href="/teacher/live-classes" className="transition hover:text-white">Live Classroom</Link>
-              <Link href="/student/courses" className="transition hover:text-white">Student Courses</Link>
-              <Link href="/student/live-classes" className="transition hover:text-white">Student Live Classes</Link>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-[14px] font-semibold uppercase tracking-[0.2em] text-[#E8A020]">AI & Compliance</p>
-            <div className="mt-5 grid gap-3 text-[14px] leading-7 text-white/72">
-              <Link href="/teacher/assessments/ai-generate" className="transition hover:text-white">AI Studio</Link>
-              <Link href="/teacher/assessments/review" className="transition hover:text-white">Review Queue</Link>
-              <Link href="/admin/reports/compliance" className="transition hover:text-white">Compliance Reports</Link>
-              <Link href="/admin/certificates" className="transition hover:text-white">Certificates</Link>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-[14px] font-semibold uppercase tracking-[0.2em] text-[#E8A020]">Access</p>
-            <div className="mt-5 grid gap-3 text-[14px] leading-7 text-white/72">
-              <Link href="/pricing" className="transition hover:text-white">Pricing</Link>
-              <Link href="/catalog" className="transition hover:text-white">Catalog</Link>
-              <Link href="/login" className="transition hover:text-white">Login</Link>
-              <Link href="/signup" className="transition hover:text-white">Signup</Link>
-            </div>
-          </div>
+        <p className="text-sm text-muted-foreground">
+          © 2026 Smart LMS. All rights reserved.
+        </p>
+        <div className="flex gap-6 text-sm text-muted-foreground">
+          <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+          <Link href="/terms" className="hover:text-foreground">Terms</Link>
         </div>
       </div>
     </footer>

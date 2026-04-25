@@ -5,7 +5,7 @@ import Link from "next/link";
 import { BookOpen, Award, Video, CheckCircle, Clock, ArrowRight } from "lucide-react";
 import { DashboardLayout, PageHeader, StatsCard, StatusBadge, ProgressBar } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
-import { percentageForStudent } from "@/components/shared/lms-core";
+import { percentageForStudent } from "@/lib/utils/lms-helpers";
 
 export default function StudentDashboardPage() {
   const { state, currentUser } = useMockLms();

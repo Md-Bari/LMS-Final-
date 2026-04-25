@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import "./globals.css";
 import { SiteShell } from "@/components/layout/site-shell";
-import { MockLmsProvider } from "@/providers/mock/mock-lms-provider";
+import { LmsProvider } from "@/providers/lms-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 
 const fraunces = Fraunces({
@@ -31,9 +31,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${fraunces.variable} ${manrope.variable}`}>
       <body className="font-sans">
         <ThemeProvider>
-          <MockLmsProvider>
+          <LmsProvider>
             <SiteShell>{children}</SiteShell>
-          </MockLmsProvider>
+          </LmsProvider>
         </ThemeProvider>
       </body>
     </html>

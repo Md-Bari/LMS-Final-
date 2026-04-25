@@ -4,7 +4,7 @@ import { useState } from "react";
 import { BookOpen, CheckCircle, Lock, Play, FileText } from "lucide-react";
 import { DashboardLayout, PageHeader, ProgressBar, StatusBadge, EmptyState } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
-import { percentageForStudent } from "@/components/shared/lms-core";
+import { percentageForStudent } from "@/lib/utils/lms-helpers";
 import Link from "next/link";
 
 export default function StudentCoursesPage() {

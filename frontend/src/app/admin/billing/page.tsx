@@ -1,18 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard, TrendingUp, AlertTriangle, CheckCircle } from "lucide-react";
-import { DashboardLayout, PageHeader, StatsCard } from "@/components/dashboard/DashboardLayout";
+import { AlertTriangle, CheckCircle } from "lucide-react";
+import { DashboardLayout, PageHeader } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
+import type { PlanTier } from "@/lib/mock-lms";
 
-const PLANS = [
-  { id: "Starter", label: "Starter", price: 4900, seats: 100, desc: "For small institutes getting started." },
-  { id: "Growth", label: "Growth", price: 9900, seats: 500, desc: "For growing institutes with more learners." },
-  { id: "Scale", label: "Scale", price: 19900, seats: 2000, desc: "For large institutes at scale." },
+const PLANS: Array<{ id: PlanTier; label: string; price: number; seats: number; desc: string }> = [
+  { id: "Starter", label: "Starter", price: 49, seats: 100, desc: "For small institutes getting started." },
+  { id: "Growth", label: "Growth", price: 149, seats: 500, desc: "For growing institutes with more learners." },
+  { id: "Professional", label: "Professional", price: 349, seats: 2000, desc: "For large institutes at scale." },
 ];
 
 export default function AdminBillingPage() {
-  const { state, updatePlan, updateActiveStudents } = useMockLms();
+  const { state, updatePlan } = useMockLms();
   const { billing, invoices } = state;
   const [saving, setSaving] = useState(false);
   const [alert, setAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
@@ -20,10 +21,10 @@ export default function AdminBillingPage() {
   const utilization = billing.seatLimit ? Math.round((billing.activeStudents / billing.seatLimit) * 100) : 0;
   const isOverLimit = billing.seatLimit && billing.activeStudents > billing.seatLimit;
 
-  async function handlePlanChange(planId: string) {
+  async function handlePlanChange(planId: PlanTier) {
     setSaving(true);
     try {
-      await updatePlan(planId as "Starter" | "Growth" | "Scale");
+      await updatePlan(planId);
       setAlert({ type: "success", msg: `Plan upgraded to ${planId} successfully.` });
     } catch (err) {
       setAlert({ type: "error", msg: err instanceof Error ? err.message : "Failed to update plan." });
@@ -123,11 +124,13 @@ export default function AdminBillingPage() {
                     {invoices.slice(0, 8).map((inv) => (
                       <tr key={inv.id}>
                         <td className="font-mono text-xs text-muted-foreground">{inv.id.slice(0, 12)}…</td>
-                        <td className="font-semibold text-foreground text-sm">৳{inv.amount}</td>
-                        <td className="text-sm text-muted-foreground">{new Date(inv.issuedAt).toLocaleDateString("en-BD")}</td>
+                        <td className="font-semibold text-foreground text-sm">৳{inv.amountBdt}</td>
+                        <td className="text-sm text-muted-foreground">
+                          {inv.issuedAt ? new Date(inv.issuedAt).toLocaleDateString("en-BD") : "Not issued"}
+                        </td>
                         <td>
-                          <span className={`badge ${inv.status === "paid" ? "badge-success" : inv.status === "overdue" ? "badge-destructive" : "badge-warning"}`}>
-                            {inv.status}
+                          <span className={`badge ${inv.paymentStatus === "paid" ? "badge-success" : inv.paymentStatus === "overdue" ? "badge-destructive" : "badge-warning"}`}>
+                            {inv.paymentStatus}
                           </span>
                         </td>
                       </tr>

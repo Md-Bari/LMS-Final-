@@ -15,19 +15,17 @@ import {
   Video,
   FileText,
   BarChart3,
-  Settings,
   LogOut,
   Menu,
   X,
   Bell,
   ChevronDown,
-  Sparkles,
   MessageSquare,
   Megaphone,
   CheckSquare,
   ShieldCheck
 } from "lucide-react";
-import { useMockLms } from "@/providers/mock-lms-provider";
+import { dashboardPathForRole, useMockLms } from "@/providers/mock-lms-provider";
 
 type NavItem = {
   href: string;
@@ -165,7 +163,7 @@ type DashboardLayoutProps = {
 
 export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const router = useRouter();
-  const { currentUser, signOut, state } = useMockLms();
+  const { authReady, currentUser, isAuthenticated, signOut, state } = useMockLms();
   const effectiveRole = role ?? (currentUser?.role as "admin" | "teacher" | "student" | undefined) ?? "admin";
   const navSections = getNavForRole(effectiveRole);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -176,6 +174,37 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
+    if (currentUser && currentUser.role !== effectiveRole) {
+      router.replace(dashboardPathForRole(currentUser.role));
+    }
+  }, [authReady, currentUser, effectiveRole, isAuthenticated, pathname, router]);
+
+  if (!authReady || !isAuthenticated || currentUser?.role !== effectiveRole) {
+    return (
+      <div className="dash-main min-h-screen">
+        <main className="dash-page flex min-h-screen items-center justify-center">
+          <div className="card max-w-md text-center">
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-muted border-t-primary" />
+            <h1 className="font-serif text-2xl text-foreground">Checking workspace access</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Redirecting to the right Smart LMS dashboard.
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const unreadNotifs = state.notifications.filter((n) =>
     n.audience === "All" ||

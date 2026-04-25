@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: 40 43% 96%;
-    --foreground: 206 57% 10%;
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 206 57% 10%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 206 57% 10%;
+    --popover-foreground: 222 47% 11%;
     --primary: 190 68% 34%;
-    --primary-foreground: 40 43% 97%;
-    --secondary: 195 31% 91%;
-    --secondary-foreground: 206 57% 10%;
-    --muted: 40 17% 89%;
-    --muted-foreground: 214 19% 40%;
-    --accent: 24 96% 57%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 73% 56%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 149 51% 39%;
-    --success-foreground: 0 0% 100%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 36 100% 54%;
+    --accent-foreground: 222 47% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 71% 45%;
+    --success-foreground: 210 40% 98%;
     --warning: 36 100% 54%;
-    --warning-foreground: 206 57% 10%;
-    --border: 206 22% 84%;
-    --input: 206 22% 84%;
+    --warning-foreground: 222 47% 11.2%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
     --ring: 190 68% 34%;
-    --sidebar-bg: 220 30% 12%;
-    --sidebar-fg: 40 28% 95%;
-    --lms-gold: #E8A020;
-    --lms-navy: #1A1A2E;
+    --sidebar-bg: 222 47% 11%;
+    --sidebar-fg: 210 40% 98%;
+    --lms-gold: #ffa10a;
+    --lms-navy: #111827;
   }
 
   .dark {
@@ -111,7 +111,7 @@
 
   .dash-sidebar-logo {
     @apply w-10 h-10 rounded-[0.9rem] flex items-center justify-center font-serif text-base font-semibold text-white shrink-0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(232,160,32,0.35));
+    background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,161,10,0.35));
     box-shadow: 0 4px 16px rgba(0,0,0,0.3);
   }
 
@@ -139,13 +139,13 @@
   }
 
   .dash-nav-item.active {
-    background: linear-gradient(135deg, rgba(232,160,32,0.22), rgba(232,160,32,0.1));
-    color: #E8A020;
-    box-shadow: 0 0 0 1px rgba(232,160,32,0.2) inset;
+    background: linear-gradient(135deg, rgba(255,161,10,0.22), rgba(255,161,10,0.1));
+    color: var(--lms-gold);
+    box-shadow: 0 0 0 1px rgba(255,161,10,0.2) inset;
   }
 
   .dash-nav-item.active svg {
-    color: #E8A020;
+    color: var(--lms-gold);
   }
 
   .dash-main {
@@ -284,8 +284,8 @@
 
   .btn-accent {
     @apply btn text-white shadow-sm hover:-translate-y-0.5;
-    background: linear-gradient(135deg, var(--lms-navy), #E8A020);
-    box-shadow: 0 4px 16px rgba(232,160,32,0.25);
+    background: linear-gradient(135deg, var(--lms-navy), var(--lms-gold));
+    box-shadow: 0 4px 16px rgba(255,161,10,0.25);
   }
 
   .btn-secondary {
@@ -335,7 +335,7 @@
 
   .progress-fill {
     @apply h-full rounded-full transition-all duration-500;
-    background: linear-gradient(90deg, hsl(var(--primary)), #E8A020);
+    background: linear-gradient(90deg, hsl(var(--primary)), var(--lms-gold));
   }
 
   /* Skeleton loading */

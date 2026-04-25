@@ -52,7 +52,7 @@ export default function AdminUsersPage() {
             type="button"
             onClick={() => setRoleFilter(roleFilter === role ? "all" : role)}
             className={`card text-left transition-all hover:-translate-y-0.5 cursor-pointer ${roleFilter === role ? "ring-2" : ""}`}
-            style={roleFilter === role ? { ringColor: color } : {}}
+            style={roleFilter === role ? { boxShadow: `0 0 0 2px ${color}` } : undefined}
           >
             <p className="text-2xl font-serif font-semibold" style={{ color }}>{count}</p>
             <p className="text-xs text-muted-foreground mt-1 uppercase tracking-[0.18em] font-semibold">{label}</p>
