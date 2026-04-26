@@ -2,10 +2,10 @@
     "admin_login":  true,
     "teacher_login":  true,
     "student_login":  true,
-    "teacher_visible_users":  29,
-    "teacher_visible_courses":  3,
+    "teacher_visible_users":  17,
+    "teacher_visible_courses":  7,
     "student_visible_users":  1,
-    "student_visible_courses":  5,
+    "student_visible_courses":  3,
     "student_visible_invoices":  0,
     "student_visible_audit":  0
 }

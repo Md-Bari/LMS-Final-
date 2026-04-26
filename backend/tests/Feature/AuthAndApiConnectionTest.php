@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Course;
+use App\Models\Invoice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class AuthAndApiConnectionTest extends TestCase
@@ -128,5 +130,40 @@ class AuthAndApiConnectionTest extends TestCase
             Course::query()->where('tenant_id', $teacher->tenant_id)->count(),
             $indexResponse->json('meta.total')
         );
+    }
+
+    public function test_repeated_billing_updates_generate_unique_invoice_numbers(): void
+    {
+        $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+
+        Carbon::setTestNow(Carbon::parse('2026-04-26 10:00:00'));
+
+        try {
+            $firstResponse = $this->actingAs($admin, 'sanctum')
+                ->patchJson('/api/v1/billing', [
+                    'plan' => 'Growth',
+                    'active_students' => 430,
+                ]);
+
+            $secondResponse = $this->actingAs($admin, 'sanctum')
+                ->patchJson('/api/v1/billing', [
+                    'plan' => 'Growth',
+                    'active_students' => 431,
+                ]);
+        } finally {
+            Carbon::setTestNow();
+        }
+
+        $firstResponse->assertOk();
+        $secondResponse->assertOk();
+
+        $invoiceNumbers = Invoice::query()
+            ->where('tenant_id', $admin->tenant_id)
+            ->latest('id')
+            ->take(2)
+            ->pluck('invoice_number');
+
+        $this->assertCount(2, $invoiceNumbers);
+        $this->assertCount(2, $invoiceNumbers->unique());
     }
 }

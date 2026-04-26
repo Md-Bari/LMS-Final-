@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\LmsSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class BillingController extends Controller
 {
@@ -58,15 +59,22 @@ class BillingController extends Controller
             LmsSupport::notify($user->tenant, 'Admin', 'billing', 'Seat utilization crossed 80% of the active plan.');
         }
 
+        $issuedAt = now();
+
         Invoice::query()->create([
             'tenant_id' => $user->tenant_id,
             'billing_profile_id' => $billingProfile->id,
-            'invoice_number' => 'INV-' . now()->format('Ym') . '-' . str_pad((string) $billingProfile->tenant_id, 4, '0', STR_PAD_LEFT) . '-' . now()->format('His'),
+            'invoice_number' => sprintf(
+                'INV-%s-%s-%s',
+                $issuedAt->format('Ym'),
+                str_pad((string) $billingProfile->tenant_id, 4, '0', STR_PAD_LEFT),
+                Str::upper((string) Str::ulid()),
+            ),
             'amount_bdt' => $billingProfile->monthly_price,
-            'billing_period' => now()->format('F Y'),
-            'issued_at' => now(),
-            'due_at' => now()->addDays(10),
-            'paid_at' => now(),
+            'billing_period' => $issuedAt->format('F Y'),
+            'issued_at' => $issuedAt,
+            'due_at' => $issuedAt->copy()->addDays(10),
+            'paid_at' => $issuedAt,
             'payment_status' => 'paid',
         ]);
 
