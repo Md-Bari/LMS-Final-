@@ -31,17 +31,17 @@ import {
 const bangladeshiInstitutePresets = [
   {
     id: "diu",
-    label: "Daffodil International University",
-    previewCopy: "DIU learner portal, branded access, and support touchpoints are ready for tenant provisioning in the demo workspace.",
+    label: "Smart LMS Platform",
+    previewCopy: "Smart LMS Platform branding, learner access, and support touchpoints are ready for tenant provisioning in the demo workspace.",
     branding: {
-      tenantName: "Daffodil International University",
-      vendorName: "Daffodil International University",
+      tenantName: "Smart LMS Platform",
+      vendorName: "Smart LMS Platform",
       city: "Dhaka",
-      logoText: "DIU",
-      subdomain: "daffodil",
-      vendorSubdomain: "daffodil",
-      customDomain: "learn.daffodil.edu.bd",
-      supportEmail: "support@daffodil.edu.bd",
+      logoText: "SL",
+      subdomain: "smart-lms-platform",
+      vendorSubdomain: "smart-lms-platform",
+      customDomain: "learn.smartlms.local",
+      supportEmail: "support@smartlms.local",
       primaryColor: "#6d28d9",
       accentColor: "#16a34a"
     }

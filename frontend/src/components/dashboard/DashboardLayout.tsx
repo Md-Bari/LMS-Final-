@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   LayoutDashboard,
   BookOpen,
@@ -168,12 +168,32 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const navSections = getNavForRole(effectiveRole);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const pathname = usePathname();
+  const topProfileRef = useRef<HTMLDivElement | null>(null);
+  const sidebarProfileRef = useRef<HTMLDivElement | null>(null);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     setSidebarOpen(false);
+    setNotifOpen(false);
+    setProfileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    function handleDocumentClick(event: MouseEvent) {
+      const target = event.target as Node;
+      const clickedTopProfile = topProfileRef.current?.contains(target);
+      const clickedSidebarProfile = sidebarProfileRef.current?.contains(target);
+
+      if (!clickedTopProfile && !clickedSidebarProfile) {
+        setProfileOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleDocumentClick);
+    return () => document.removeEventListener("mousedown", handleDocumentClick);
+  }, []);
 
   useEffect(() => {
     if (!authReady) {
@@ -226,6 +246,52 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     .toUpperCase();
 
   const accentColor = getRoleColor(effectiveRole);
+  const planSummary = `${state.billing.plan} Plan`;
+  const seatSummary = `${state.billing.activeStudents}/${state.billing.seatLimit} seats active`;
+
+  function ProfilePopover({ compact = false }: { compact?: boolean }) {
+    return (
+      <div
+        className={`rounded-2xl border shadow-xl ${
+          compact ? "mt-3 w-full" : "absolute right-0 top-12 z-50 w-80"
+        }`}
+        style={{ background: "hsl(var(--card))", borderColor: "hsl(var(--border))" }}
+      >
+        <div className="border-b px-4 py-4" style={{ borderColor: "hsl(var(--border) / 0.6)" }}>
+          <div className="flex items-center gap-3">
+            <div className="avatar h-11 w-11 text-sm" style={{ background: `linear-gradient(135deg, ${accentColor}99, ${accentColor})` }}>
+              {avatarInitials}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground">{currentUser?.name ?? "Guest"}</p>
+              <p className="truncate text-xs text-muted-foreground">{currentUser?.email ?? ""}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 px-4 py-4 text-sm">
+          <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current Plan</p>
+            <p className="mt-2 font-serif text-2xl text-foreground">{planSummary}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{seatSummary}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Role</p>
+              <p className="mt-2 text-sm font-semibold capitalize text-foreground">{effectiveRole}</p>
+            </div>
+            <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Learners</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{state.billing.activeStudents}</p>
+            </div>
+          </div>
+          <Link href="/admin/billing" className="btn-secondary w-full justify-center text-center">
+            View Billing
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -258,16 +324,25 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         </div>
 
         {/* User mini-card */}
-        <div className="px-4 py-3 mx-3 mt-3 rounded-xl" style={{ background: "rgba(255,255,255,0.06)" }}>
-          <div className="flex items-center gap-3">
-            <div className="avatar w-9 h-9 text-sm" style={{ background: `linear-gradient(135deg, ${accentColor}99, ${accentColor})` }}>
-              {avatarInitials}
+        <div ref={sidebarProfileRef} className="mx-3 mt-3">
+          <button
+            type="button"
+            onClick={() => setProfileOpen((current) => !current)}
+            className="w-full rounded-xl px-4 py-3 text-left transition hover:bg-white/[0.09]"
+            style={{ background: "rgba(255,255,255,0.06)" }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="avatar h-9 w-9 text-sm" style={{ background: `linear-gradient(135deg, ${accentColor}99, ${accentColor})` }}>
+                {avatarInitials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white/90">{currentUser?.name ?? "Guest"}</p>
+                <p className="truncate text-[10px] text-white/45">{currentUser?.email ?? ""}</p>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-white/40 transition-transform ${profileOpen ? "rotate-180" : ""}`} />
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-white/90 truncate">{currentUser?.name ?? "Guest"}</p>
-              <p className="text-[10px] text-white/45 truncate">{currentUser?.email ?? ""}</p>
-            </div>
-          </div>
+          </button>
+          {profileOpen ? <ProfilePopover compact /> : null}
         </div>
 
         {/* Navigation */}
@@ -356,14 +431,23 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             </div>
 
             {/* Avatar */}
-            <div className="flex items-center gap-2.5">
-              <div className="avatar w-9 h-9 text-sm" style={{ background: `linear-gradient(135deg, ${accentColor}99, ${accentColor})` }}>
-                {avatarInitials}
-              </div>
-              <div className="hidden md:block">
-                <p className="text-sm font-semibold leading-none">{currentUser?.name ?? "Guest"}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 capitalize">{effectiveRole}</p>
-              </div>
+            <div ref={topProfileRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setProfileOpen((current) => !current)}
+                className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition hover:bg-muted/60"
+              >
+                <div className="avatar h-9 w-9 text-sm" style={{ background: `linear-gradient(135deg, ${accentColor}99, ${accentColor})` }}>
+                  {avatarInitials}
+                </div>
+                <div className="hidden md:block text-left">
+                  <p className="text-sm font-semibold leading-none">{currentUser?.name ?? "Guest"}</p>
+                  <p className="mt-0.5 text-xs capitalize text-muted-foreground">{effectiveRole}</p>
+                </div>
+                <ChevronDown className={`hidden h-4 w-4 text-muted-foreground transition-transform md:block ${profileOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {profileOpen ? <ProfilePopover /> : null}
             </div>
           </div>
         </header>
