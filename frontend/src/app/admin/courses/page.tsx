@@ -1,31 +1,71 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Plus, Filter } from "lucide-react";
 import {
   DashboardLayout, PageHeader, StatusBadge, SearchBar, EmptyState
 } from "@/components/dashboard/DashboardLayout";
+import { fetchCoursesFromBackend } from "@/lib/api/lms-backend";
 import { useMockLms } from "@/providers/mock-lms-provider";
 
 export default function AdminCoursesPage() {
-  const { state, createCourse, publishCourse } = useMockLms();
+  const { state, currentUser, createCourse, publishCourse } = useMockLms();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [alert, setAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [backendCourses, setBackendCourses] = useState(state.courses);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // Form state
   const [form, setForm] = useState({ title: "", category: "", description: "", price: "" });
 
+  useEffect(() => {
+    if (!currentUser) {
+      setBackendCourses(state.courses);
+      setSearchLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setSearchLoading(true);
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const courses = await fetchCoursesFromBackend(search);
+
+        if (!cancelled) {
+          setBackendCourses(courses);
+        }
+      } catch {
+        if (!cancelled) {
+          setBackendCourses(state.courses);
+          setAlert({ type: "error", msg: "Could not load courses from backend. Showing local data." });
+        }
+      } finally {
+        if (!cancelled) {
+          setSearchLoading(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [currentUser, search, state.courses]);
+
+  const courseSource = currentUser ? backendCourses : state.courses;
+
   const filtered = useMemo(() => {
-    return state.courses.filter((c) => {
+    return courseSource.filter((c) => {
       const matchSearch = c.title.toLowerCase().includes(search.toLowerCase()) ||
         c.category.toLowerCase().includes(search.toLowerCase());
       const matchFilter = filter === "all" || c.status === filter;
       return matchSearch && matchFilter;
     });
-  }, [state.courses, search, filter]);
+  }, [courseSource, search, filter]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -63,7 +103,7 @@ export default function AdminCoursesPage() {
     <DashboardLayout role="admin">
       <PageHeader
         title="Courses"
-        subtitle={`${state.courses.length} total courses on your platform.`}
+        subtitle={`${courseSource.length} total courses on your platform.`}
         actions={
           <button type="button" onClick={() => setShowCreate(true)} className="btn-accent">
             <Plus className="w-4 h-4" /> New Course
@@ -98,7 +138,9 @@ export default function AdminCoursesPage() {
 
       {/* Table */}
       <div className="card overflow-hidden p-0">
-        {filtered.length === 0 ? (
+        {searchLoading ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">Searching courses...</div>
+        ) : filtered.length === 0 ? (
           <EmptyState
             icon={<BookOpen className="w-8 h-8" />}
             title="No courses found"

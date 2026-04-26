@@ -19,12 +19,14 @@ import {
   Users,
   Video
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   planMatrix,
+  type Course,
   type Role
 } from "@/lib/mock-lms";
+import { fetchPublicCoursesFromBackend } from "@/lib/api/lms-backend";
 import { dashboardPathForRole, useMockLms } from "@/providers/mock-lms-provider";
 import { useThemeMode } from "@/providers/theme-provider";
 
@@ -345,6 +347,10 @@ function GenericMarketing({ slug }: { slug: string }) {
 export function HomeExperience() {
   const { state, currentUser, isAuthenticated, resetDemo } = useMockLms();
   const { mounted, theme, toggleTheme } = useThemeMode();
+  const [courseSearch, setCourseSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<Course[]>([]);
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const activeLearners = state.billing.activeStudents;
   const publishedCourses = state.courses.filter((course) => course.status === "published").length;
   const totalLessons = state.courses.reduce((total, course) => total + course.modules.reduce((sum, module) => sum + module.lessons.length, 0), 0);
@@ -398,6 +404,45 @@ export function HomeExperience() {
     { label: "Course lessons", value: `${totalLessons}+` }
   ];
 
+  useEffect(() => {
+    const term = courseSearch.trim();
+
+    if (term.length === 0) {
+      setSearchResults([]);
+      setSearchBusy(false);
+      setSearchError("");
+      return;
+    }
+
+    let cancelled = false;
+    setSearchBusy(true);
+    setSearchError("");
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const courses = await fetchPublicCoursesFromBackend(term);
+
+        if (!cancelled) {
+          setSearchResults(courses);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSearchResults([]);
+          setSearchError(error instanceof Error ? error.message : "Course search failed.");
+        }
+      } finally {
+        if (!cancelled) {
+          setSearchBusy(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [courseSearch]);
+
   return (
     <div className="bg-background text-foreground">
       <section className="border-b border-foreground/5 bg-[#121417] text-white">
@@ -445,7 +490,13 @@ export function HomeExperience() {
           <div className="hidden min-w-[360px] flex-1 items-center justify-center xl:flex">
             <div className="flex w-full max-w-[640px] items-center gap-3 rounded-full border border-foreground/10 bg-background px-5 py-3 shadow-soft">
               <Search className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">What do you want to learn?</span>
+              <input
+                type="search"
+                value={courseSearch}
+                onChange={(event) => setCourseSearch(event.target.value)}
+                placeholder="What do you want to learn?"
+                className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+              />
               <span className="ml-auto grid h-8 w-8 place-items-center rounded-full bg-[#b9852b] text-white">
                 <Search className="h-3.5 w-3.5" />
               </span>
@@ -643,11 +694,47 @@ export function HomeExperience() {
           </div>
           <div className="mx-auto mt-8 flex max-w-5xl items-center gap-3 rounded-xl border border-[#b9852b]/35 bg-[#191b2d] px-5 py-4 text-white shadow-soft">
             <Search className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-white/60">e.g. AI Assessment, Compliance Reporting, Leadership</span>
+            <input
+              type="search"
+              value={courseSearch}
+              onChange={(event) => setCourseSearch(event.target.value)}
+              placeholder="e.g. AI Assessment, Compliance Reporting, Leadership"
+              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/60"
+            />
             <span className="ml-auto grid h-9 w-9 place-items-center rounded-lg bg-[#b9852b] text-white">
               <Search className="h-4 w-4" />
             </span>
           </div>
+
+          {courseSearch.trim().length > 0 && (
+            <div className="mx-auto mt-4 max-w-5xl rounded-xl border border-[#b9852b]/25 bg-[#171929] p-3 shadow-soft">
+              {searchBusy ? (
+                <p className="px-2 py-2 text-sm text-white/70">Searching courses from database...</p>
+              ) : searchError ? (
+                <p className="px-2 py-2 text-sm text-red-300">{searchError}</p>
+              ) : searchResults.length === 0 ? (
+                <p className="px-2 py-2 text-sm text-white/70">No course found for "{courseSearch}".</p>
+              ) : (
+                <div className="grid gap-2">
+                  {searchResults.map((course) => {
+                    const slug = Object.entries(catalogSlugMap).find(([, value]) => value === course.id)?.[0] ?? course.id;
+
+                    return (
+                      <Link
+                        key={course.id}
+                        href={`/catalog/${slug}`}
+                        className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 transition hover:border-[#ddb364]/55 hover:bg-white/10"
+                      >
+                        <p className="text-sm font-semibold text-white">{course.title}</p>
+                        <p className="mt-1 text-xs text-white/65">{course.category}</p>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Popular</span>
             {categoryChips.map((chip) => (

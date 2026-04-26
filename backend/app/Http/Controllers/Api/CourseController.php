@@ -16,6 +16,34 @@ use Illuminate\Support\Str;
 
 class CourseController extends Controller
 {
+    public function publicIndex(Request $request): JsonResponse
+    {
+        $courses = Course::query()
+            ->where('status', 'published')
+            ->when(
+                $request->filled('search'),
+                fn ($query) => $query->where(function ($inner) use ($request): void {
+                    $search = '%' . $request->string('search')->toString() . '%';
+                    $inner->where('title', 'like', $search)
+                        ->orWhere('category', 'like', $search)
+                        ->orWhere('level', 'like', $search);
+                })
+            )
+            ->with('modules.lessons.completedUsers:id,name')
+            ->orderBy('title')
+            ->paginate($this->perPage($request, 12));
+
+        return response()->json([
+            'data' => $courses->getCollection()->map(fn (Course $course): array => LmsSupport::serializeCourse($course))->all(),
+            'meta' => [
+                'currentPage' => $courses->currentPage(),
+                'lastPage' => $courses->lastPage(),
+                'perPage' => $courses->perPage(),
+                'total' => $courses->total(),
+            ],
+        ]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         /** @var User $user */

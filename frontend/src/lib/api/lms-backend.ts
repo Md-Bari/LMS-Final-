@@ -25,6 +25,10 @@ type TeacherAssessmentBootstrap = {
   fallbackQuestionBank: FallbackQuestionBankItem[];
 };
 
+type CoursesResponse = {
+  data?: Course[];
+};
+
 type VendorBootstrap = {
   vendor: VendorSummary;
   branding: TenantBranding;
@@ -536,6 +540,50 @@ export async function createCourseOnBackend(payload: {
 
   const data = await unwrapResponse<{ data: Course }>(response);
   return normalizeCourse(data.data as unknown as Record<string, unknown>);
+}
+
+export async function fetchCoursesFromBackend(search?: string) {
+  const params = new URLSearchParams();
+  const normalizedSearch = search?.trim() ?? "";
+
+  if (normalizedSearch.length > 0) {
+    params.set("search", normalizedSearch);
+  }
+
+  params.set("per_page", "100");
+
+  const query = params.toString();
+  const response = await apiFetch(`/api/v1/courses${query ? `?${query}` : ""}`);
+  const payload = await unwrapResponse<CoursesResponse>(response);
+
+  return (payload.data ?? []).map((course) => normalizeCourse(course as unknown as Record<string, unknown>));
+}
+
+export async function fetchPublicCoursesFromBackend(search?: string) {
+  const params = new URLSearchParams();
+  const normalizedSearch = search?.trim() ?? "";
+
+  if (normalizedSearch.length > 0) {
+    params.set("search", normalizedSearch);
+  }
+
+  params.set("per_page", "12");
+
+  const query = params.toString();
+  let response: Response;
+
+  try {
+    response = await fetch(apiUrl(`/api/v1/public/courses${query ? `?${query}` : ""}`), {
+      headers: {
+        Accept: "application/json"
+      }
+    });
+  } catch {
+    throw new Error(`Could not reach the LMS backend at ${API_BASE_URL}. Check that Laravel is running and CORS allows this frontend origin.`);
+  }
+
+  const payload = await unwrapResponse<CoursesResponse>(response);
+  return (payload.data ?? []).map((course) => normalizeCourse(course as unknown as Record<string, unknown>));
 }
 
 export async function publishCourseOnBackend(courseId: string) {

@@ -171,7 +171,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const pathname = usePathname();
   const topProfileRef = useRef<HTMLDivElement | null>(null);
-  const sidebarProfileRef = useRef<HTMLDivElement | null>(null);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -184,9 +183,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     function handleDocumentClick(event: MouseEvent) {
       const target = event.target as Node;
       const clickedTopProfile = topProfileRef.current?.contains(target);
-      const clickedSidebarProfile = sidebarProfileRef.current?.contains(target);
 
-      if (!clickedTopProfile && !clickedSidebarProfile) {
+      if (!clickedTopProfile) {
         setProfileOpen(false);
       }
     }
@@ -248,6 +246,12 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const accentColor = getRoleColor(effectiveRole);
   const planSummary = `${state.billing.plan} Plan`;
   const seatSummary = `${state.billing.activeStudents}/${state.billing.seatLimit} seats active`;
+  const profileAction =
+    effectiveRole === "admin"
+      ? { href: "/admin/billing", label: "View Billing" }
+      : effectiveRole === "teacher"
+        ? { href: "/teacher/courses", label: "Open Courses" }
+        : { href: "/student/courses", label: "Open Courses" };
 
   function ProfilePopover({ compact = false }: { compact?: boolean }) {
     return (
@@ -285,8 +289,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <p className="mt-2 text-sm font-semibold text-foreground">{state.billing.activeStudents}</p>
             </div>
           </div>
-          <Link href="/admin/billing" className="btn-secondary w-full justify-center text-center">
-            View Billing
+          <Link href={profileAction.href} className="btn-secondary w-full justify-center text-center">
+            {profileAction.label}
           </Link>
         </div>
       </div>
@@ -294,7 +298,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen w-full overflow-x-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -324,25 +328,16 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         </div>
 
         {/* User mini-card */}
-        <div ref={sidebarProfileRef} className="mx-3 mt-3">
-          <button
-            type="button"
-            onClick={() => setProfileOpen((current) => !current)}
-            className="w-full rounded-xl px-4 py-3 text-left transition hover:bg-white/[0.09]"
-            style={{ background: "rgba(255,255,255,0.06)" }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="avatar h-9 w-9 text-sm" style={{ background: `linear-gradient(135deg, ${accentColor}99, ${accentColor})` }}>
-                {avatarInitials}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-white/90">{currentUser?.name ?? "Guest"}</p>
-                <p className="truncate text-[10px] text-white/45">{currentUser?.email ?? ""}</p>
-              </div>
-              <ChevronDown className={`h-4 w-4 text-white/40 transition-transform ${profileOpen ? "rotate-180" : ""}`} />
+        <div className="mx-3 mt-3 rounded-xl px-4 py-3" style={{ background: "rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center gap-3">
+            <div className="avatar h-9 w-9 text-sm" style={{ background: `linear-gradient(135deg, ${accentColor}99, ${accentColor})` }}>
+              {avatarInitials}
             </div>
-          </button>
-          {profileOpen ? <ProfilePopover compact /> : null}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-white/90">{currentUser?.name ?? "Guest"}</p>
+              <p className="truncate text-[10px] text-white/45">{currentUser?.email ?? ""}</p>
+            </div>
+          </div>
         </div>
 
         {/* Navigation */}

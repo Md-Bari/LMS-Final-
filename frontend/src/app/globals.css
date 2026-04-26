@@ -149,7 +149,8 @@
   }
 
   .dash-main {
-    @apply ml-64 min-h-screen flex flex-col;
+    @apply ml-64 min-h-screen flex flex-col min-w-0;
+    width: calc(100vw - 16rem);
     background: hsl(var(--background));
   }
 
@@ -415,6 +416,7 @@
   @media (max-width: 1023px) {
     .dash-main {
       @apply ml-0;
+      width: 100vw;
     }
     .dash-sidebar {
       @apply -translate-x-full;
