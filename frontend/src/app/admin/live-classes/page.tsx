@@ -12,7 +12,15 @@ export default function AdminLiveClassesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [alert, setAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
-  const [form, setForm] = useState({ title: "", courseId: "", startAt: "", durationMinutes: "60" });
+  const [form, setForm] = useState({
+    title: "",
+    courseId: "",
+    startTime: "",
+    durationMinutes: "60",
+    platform: "jitsi",
+    meetingLink: "",
+    description: ""
+  });
 
   const publishedCourses = state.courses.filter((c) => c.status === "published");
   const scheduled = state.liveClasses.filter((lc) => lc.status === "scheduled").length;
@@ -23,10 +31,18 @@ export default function AdminLiveClassesPage() {
     e.preventDefault();
     setCreating(true);
     try {
-      await scheduleLiveClass({ title: form.title, courseId: form.courseId, startAt: form.startAt, durationMinutes: Number(form.durationMinutes) });
+      await scheduleLiveClass({
+        title: form.title,
+        courseId: form.courseId,
+        startTime: form.startTime,
+        durationMinutes: Number(form.durationMinutes),
+        platform: form.platform,
+        meetingLink: form.meetingLink,
+        description: form.description
+      });
       setAlert({ type: "success", msg: `"${form.title}" scheduled.` });
       setShowCreate(false);
-      setForm({ title: "", courseId: "", startAt: "", durationMinutes: "60" });
+      setForm({ title: "", courseId: "", startTime: "", durationMinutes: "60", platform: "jitsi", meetingLink: "", description: "" });
     } catch (err) {
       setAlert({ type: "error", msg: err instanceof Error ? err.message : "Failed to schedule." });
     } finally {
@@ -148,11 +164,29 @@ export default function AdminLiveClassesPage() {
               </div>
               <div>
                 <label className="form-label">Start Date & Time *</label>
-                <input type="datetime-local" className="form-input" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} required />
+                <input type="datetime-local" className="form-input" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} required />
               </div>
               <div>
                 <label className="form-label">Duration (minutes)</label>
                 <input type="number" className="form-input" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} min={15} max={300} />
+              </div>
+              <div>
+                <label className="form-label">Platform</label>
+                <select className="form-input" value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })}>
+                  <option value="jitsi">Jitsi</option>
+                  <option value="google-meet">Google Meet</option>
+                  <option value="zoom">Zoom</option>
+                  <option value="teams">Teams</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Meeting Link (optional)</label>
+                <input type="url" className="form-input" value={form.meetingLink} onChange={(e) => setForm({ ...form, meetingLink: e.target.value })} placeholder="https://..." />
+              </div>
+              <div>
+                <label className="form-label">Description (optional)</label>
+                <textarea className="form-input min-h-[84px]" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={creating} className="btn-accent flex-1">{creating ? "Scheduling…" : "Schedule"}</button>

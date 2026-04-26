@@ -151,6 +151,8 @@
   .dash-main {
     @apply ml-64 min-h-screen flex flex-col;
     background: hsl(var(--background));
+    width: calc(100vw - 16rem);
+    max-width: none;
   }
 
   .dash-topbar {
@@ -415,6 +417,7 @@
   @media (max-width: 1023px) {
     .dash-main {
       @apply ml-0;
+      width: 100vw;
     }
     .dash-sidebar {
       @apply -translate-x-full;

@@ -23,9 +23,12 @@ import {
   MessageSquare,
   Megaphone,
   CheckSquare,
-  ShieldCheck
+  ShieldCheck,
+  MoonStar,
+  SunMedium
 } from "lucide-react";
 import { dashboardPathForRole, useMockLms } from "@/providers/mock-lms-provider";
+import { useThemeMode } from "@/providers/theme-provider";
 
 type NavItem = {
   href: string;
@@ -144,6 +147,12 @@ function getRoleColor(role?: string) {
   return "#E8A020"; // gold for admin
 }
 
+function getProfileHref(role?: string) {
+  if (role === "teacher") return "/teacher/settings";
+  if (role === "student") return "/student/profile";
+  return "/admin/settings";
+}
+
 function SidebarItem({ href, label, icon }: NavItem) {
   const pathname = usePathname();
   const active = pathname === href || (href !== "/admin/dashboard" && href !== "/teacher/dashboard" && href !== "/student/dashboard" && pathname.startsWith(href));
@@ -168,6 +177,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const navSections = getNavForRole(effectiveRole);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const { mounted, theme, toggleTheme } = useThemeMode();
   const pathname = usePathname();
 
   // Close sidebar on route change (mobile)
@@ -226,6 +236,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     .toUpperCase();
 
   const accentColor = getRoleColor(effectiveRole);
+  const profileHref = getProfileHref(effectiveRole);
 
   return (
     <div className="flex min-h-screen">
@@ -320,6 +331,15 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-foreground/15 bg-card/80 text-foreground transition hover:-translate-y-0.5 hover:border-[#E8A020]/60 dark:border-white/10 dark:bg-white/5"
+              aria-label={mounted ? `Switch to ${theme === "light" ? "dark" : "light"} mode` : "Toggle theme"}
+            >
+              {mounted && theme === "dark" ? <SunMedium className="w-4 h-4 text-[#E8A020]" /> : <MoonStar className="w-4 h-4 text-[#1A1A2E]" />}
+            </button>
+
             {/* Notifications */}
             <div className="relative">
               <button
@@ -356,7 +376,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             </div>
 
             {/* Avatar */}
-            <div className="flex items-center gap-2.5">
+            <Link href={profileHref} className="flex items-center gap-2.5 rounded-xl px-2 py-1 transition-colors hover:bg-muted/60">
               <div className="avatar w-9 h-9 text-sm" style={{ background: `linear-gradient(135deg, ${accentColor}99, ${accentColor})` }}>
                 {avatarInitials}
               </div>
@@ -364,7 +384,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 <p className="text-sm font-semibold leading-none">{currentUser?.name ?? "Guest"}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 capitalize">{effectiveRole}</p>
               </div>
-            </div>
+            </Link>
           </div>
         </header>
 

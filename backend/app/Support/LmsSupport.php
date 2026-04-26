@@ -437,8 +437,10 @@ class LmsSupport
     public static function serializeLiveClass(LiveClass $liveClass): array
     {
         $liveClass->loadMissing(['course:id,tenant_id', 'participants:id,live_class_id,student_id,joined_at,left_at', 'recordings:id,live_class_id,recording_url,duration_seconds,duration']);
-        $scheduledAt = $liveClass->scheduled_at ?? $liveClass->start_at;
+        $scheduledAt = $liveClass->start_time ?? $liveClass->scheduled_at ?? $liveClass->start_at;
         $status = self::resolveLiveClassStatus($liveClass);
+        $meetingLink = $liveClass->meeting_link ?? $liveClass->meeting_url;
+        $platform = $liveClass->platform ?? $liveClass->provider ?? 'jitsi';
 
         return [
             'id' => $liveClass->id,
@@ -448,14 +450,18 @@ class LmsSupport
             'description' => $liveClass->description,
             'courseId' => $liveClass->course_id,
             'teacherId' => $liveClass->teacher_id,
+            'createdBy' => $liveClass->created_by,
             'roomSlug' => $liveClass->room_slug,
+            'startTime' => optional($scheduledAt)->toIso8601String(),
             'scheduledAt' => optional($scheduledAt)->toIso8601String(),
             'startAt' => optional($scheduledAt)->toIso8601String(),
             'durationMinutes' => $liveClass->duration_minutes,
             'participantLimit' => $liveClass->participant_limit,
             'participantCount' => $liveClass->participants->count(),
-            'provider' => $liveClass->provider,
-            'meetingUrl' => $liveClass->meeting_url,
+            'platform' => $platform,
+            'provider' => $liveClass->provider ?? $platform,
+            'meetingLink' => $meetingLink,
+            'meetingUrl' => $meetingLink,
             'recordingUrl' => $liveClass->recording_url,
             'reminder24h' => $liveClass->reminder_24h,
             'reminder1h' => $liveClass->reminder_1h,
@@ -482,7 +488,7 @@ class LmsSupport
             return 'recorded';
         }
 
-        $scheduledAt = $liveClass->scheduled_at ?? $liveClass->start_at;
+        $scheduledAt = $liveClass->start_time ?? $liveClass->scheduled_at ?? $liveClass->start_at;
 
         if ($scheduledAt === null) {
             return $liveClass->status;
@@ -695,9 +701,11 @@ class LmsSupport
 
     public static function notify(?Tenant $tenant, string $audience, string $type, string $message): Notification
     {
+        $normalizedAudience = in_array($audience, ['Admin', 'Teacher'], true) ? 'All' : $audience;
+
         $payload = [
             'tenant_id' => $tenant?->id,
-            'audience' => $audience,
+            'audience' => $normalizedAudience,
             'type' => $type,
             'message' => $message,
         ];
@@ -878,7 +886,7 @@ class LmsSupport
                 ->sortByDesc('submitted_at')
                 ->values();
             $visibleLiveClasses = $tenantLiveClasses
-                ->whereIn('course_id', $teacherCourseIds)
+                ->where('teacher_id', $user->id)
                 ->values();
             $visibleEnrollments = $tenantEnrollments
                 ->whereIn('course_id', $teacherCourseIds)

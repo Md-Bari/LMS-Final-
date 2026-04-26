@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\DirectoryController;
 use App\Http\Controllers\Api\EnrollmentController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LiveClassController;
+use App\Http\Controllers\Api\MarketingEventController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\TenantBrandingController;
 use App\Http\Controllers\Api\AttendanceController;
@@ -19,6 +20,8 @@ use App\Http\Controllers\Api\VendorController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
+    Route::post('/public/marketing-events', [MarketingEventController::class, 'store']);
+
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
 
@@ -63,6 +66,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/live-classes', [LiveClassController::class, 'index']);
         Route::post('/live-classes', [LiveClassController::class, 'store']);
         Route::get('/live-classes/{liveClass}', [LiveClassController::class, 'show']);
+        Route::put('/live-classes/{liveClass}', [LiveClassController::class, 'update']);
+        Route::delete('/live-classes/{liveClass}', [LiveClassController::class, 'destroy']);
         Route::post('/live-classes/{liveClass}/go-live', [LiveClassController::class, 'goLive']);
         Route::post('/live-classes/{liveClass}/complete', [LiveClassController::class, 'complete']);
         Route::post('/live-classes/{liveClass}/mark-recorded', [LiveClassController::class, 'markRecorded']);
@@ -87,11 +92,18 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
 
         Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::post('/notifications', [NotificationController::class, 'store']);
         Route::get('/audit-events', [AuditController::class, 'index']);
     });
 });
 
 Route::middleware('auth:sanctum')->group(function (): void {
+    Route::get('/live-classes', [LiveClassController::class, 'index']);
+    Route::post('/live-classes', [LiveClassController::class, 'store']);
+    Route::get('/live-classes/{liveClass}', [LiveClassController::class, 'show']);
+    Route::put('/live-classes/{liveClass}', [LiveClassController::class, 'update']);
+    Route::delete('/live-classes/{liveClass}', [LiveClassController::class, 'destroy']);
+
     Route::post('/teacher/notes/upload', [AssessmentController::class, 'uploadNotes']);
     Route::get('/teacher/question-bank/fallback', [AssessmentController::class, 'fallbackBanks']);
     Route::post('/teacher/assessments/generate', [AssessmentController::class, 'generate']);

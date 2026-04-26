@@ -11,13 +11,13 @@ export default function TeacherDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 500);
+    const t = setTimeout(() => setLoading(false), 150);
     return () => clearTimeout(t);
   }, []);
 
   const myCourses = state.courses.filter((c) => !c.teacherId || c.teacherId === currentUser?.id);
   const myAssessments = state.assessments;
-  const myLiveClasses = state.liveClasses.filter((lc) => lc.status !== "recorded");
+  const myLiveClasses = state.liveClasses;
   const pendingSubmissions = state.submissions.filter((s) => !s.feedback);
 
   const totalStudents = state.enrollments.filter((e) =>
@@ -87,7 +87,7 @@ export default function TeacherDashboardPage() {
               <p className="text-sm text-muted-foreground text-center py-6">No courses yet. Create your first course!</p>
             ) : (
               <div className="grid gap-3">
-                {myCourses.slice(0, 4).map((course) => {
+                {myCourses.map((course) => {
                   const lessons = course.modules.flatMap((m) => m.lessons);
                   return (
                     <div key={course.id} className="card-sm flex items-center gap-4 hover:-translate-y-0.5 transition-all">
@@ -118,7 +118,7 @@ export default function TeacherDashboardPage() {
               <p className="text-sm text-muted-foreground text-center py-4">No submissions yet.</p>
             ) : (
               <div className="grid gap-3">
-                {state.submissions.slice(0, 4).map((sub) => {
+                {state.submissions.map((sub) => {
                   const assessment = state.assessments.find((a) => a.id === sub.assessmentId);
                   return (
                     <div key={sub.id} className="flex items-center gap-3">
@@ -155,7 +155,7 @@ export default function TeacherDashboardPage() {
               <p className="text-sm text-muted-foreground text-center py-4">No upcoming classes.</p>
             ) : (
               <div className="grid gap-3">
-                {myLiveClasses.slice(0, 3).map((lc) => (
+                {myLiveClasses.map((lc) => (
                   <div key={lc.id} className="card-sm">
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -190,7 +190,7 @@ export default function TeacherDashboardPage() {
               <p className="text-sm text-muted-foreground text-center py-4">No assessments yet.</p>
             ) : (
               <div className="grid gap-2.5">
-                {myAssessments.slice(0, 4).map((a) => (
+                {myAssessments.map((a) => (
                   <div key={a.id} className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
                       <ClipboardList className="w-4 h-4 text-purple-500" />

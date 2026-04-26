@@ -54,8 +54,8 @@ export default function AdminDashboardPage() {
   const scheduledClasses = state.liveClasses.filter((lc) => lc.status === "scheduled").length;
   const activeEnrollments = state.enrollments.filter((e) => e.status === "active").length;
 
-  const recentAudit = state.auditEvents.slice(0, 5);
-  const recentCerts = state.certificates.slice(0, 5);
+  const recentAudit = state.auditEvents;
+  const recentCerts = state.certificates;
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -134,9 +134,9 @@ export default function AdminDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {state.courses.slice(0, 6).map((course) => (
+                    {state.courses.map((course) => (
                       <tr key={course.id}>
-                        <td className="font-medium text-foreground max-w-[180px] truncate">{course.title}</td>
+                        <td className="font-medium text-foreground">{course.title}</td>
                         <td className="text-muted-foreground">{course.category}</td>
                         <td className="text-muted-foreground">{course.enrollmentCount}</td>
                         <td><StatusBadge status={course.status} /></td>
@@ -191,9 +191,13 @@ export default function AdminDashboardPage() {
             <div className="grid gap-2">
               <QuickActionCard href="/admin/users" icon={<Users className="w-5 h-5" />} label="Manage Users" description="Add or edit students and teachers" color="#3b82f6" />
               <QuickActionCard href="/admin/courses" icon={<BookOpen className="w-5 h-5" />} label="Manage Courses" description="Publish, edit, or archive courses" color="#0f766e" />
+              <QuickActionCard href="/admin/enrollments" icon={<GraduationCap className="w-5 h-5" />} label="Manage Enrollments" description="Track enrollment status and progress" color="#0ea5e9" />
+              <QuickActionCard href="/admin/assessments" icon={<BarChart2 className="w-5 h-5" />} label="Assessment Control" description="Publish, monitor, and score assessments" color="#8b5cf6" />
               <QuickActionCard href="/admin/certificates" icon={<Award className="w-5 h-5" />} label="Issue Certificates" description="Issue and verify certificates" color="#E8A020" />
               <QuickActionCard href="/admin/reports/compliance" icon={<BarChart2 className="w-5 h-5" />} label="Compliance Reports" description="Export audit-ready reports" color="#7c3aed" />
               <QuickActionCard href="/admin/live-classes" icon={<Video className="w-5 h-5" />} label="Live Classes" description="Schedule and manage sessions" color="#e11d48" />
+              <QuickActionCard href="/admin/billing" icon={<CreditCard className="w-5 h-5" />} label="Billing Studio" description="Plan, seat, and payment controls" color="#f97316" />
+              <QuickActionCard href="/admin/audit-logs" icon={<AlertTriangle className="w-5 h-5" />} label="Audit Logs" description="Review system actions and events" color="#ef4444" />
             </div>
           </div>
 

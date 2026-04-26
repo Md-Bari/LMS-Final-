@@ -727,7 +727,7 @@ export function LiveClassesPanel() {
   const [form, setForm] = useState({
     title: "New live session",
     courseId: state.courses[0]?.id ?? "",
-    startAt: new Date().toISOString().slice(0, 16),
+    startTime: new Date().toISOString().slice(0, 16),
     durationMinutes: 60
   });
   const visibleLiveClasses = showAllLiveClasses ? state.liveClasses : state.liveClasses.slice(0, 5);
@@ -752,9 +752,9 @@ export function LiveClassesPanel() {
               </option>
             ))}
           </SelectInput>
-          <TextInput type="datetime-local" value={form.startAt} onChange={(event) => setForm({ ...form, startAt: event.target.value })} />
+          <TextInput type="datetime-local" value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} />
           <TextInput type="number" value={form.durationMinutes} onChange={(event) => setForm({ ...form, durationMinutes: Number(event.target.value) })} />
-          <PrimaryButton onClick={() => scheduleLiveClass({ ...form, startAt: new Date(form.startAt).toISOString() })}>
+          <PrimaryButton onClick={() => scheduleLiveClass({ ...form, startTime: new Date(form.startTime).toISOString() })}>
             Schedule live class
           </PrimaryButton>
         </div>

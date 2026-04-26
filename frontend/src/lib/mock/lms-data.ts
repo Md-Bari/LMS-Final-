@@ -114,12 +114,12 @@ export type LiveClass = {
   startAt: string;
   durationMinutes: number;
   participantLimit: number;
-  provider: "Jitsi";
+  provider: string;
   meetingUrl?: string;
   recordingUrl?: string | null;
   reminder24h: boolean;
   reminder1h: boolean;
-  status: "scheduled" | "live" | "recorded";
+  status: "scheduled" | "live" | "recorded" | "completed" | "cancelled";
 };
 
 export type Certificate = {

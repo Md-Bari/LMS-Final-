@@ -1,7 +1,7 @@
 "use client";
 
 import { DashboardLayout, PageHeader } from "@/components/dashboard/DashboardLayout";
-import { LiveClassesPanel } from "@/components/teacher/teacher-panels";
+import { TeacherLiveClassesPanel } from "@/components/teacher/teacher-live-classes-panel";
 
 export default function TeacherLiveClassesPage() {
   return (
@@ -10,7 +10,7 @@ export default function TeacherLiveClassesPage() {
         title="Live Classes"
         subtitle="Schedule sessions, open meeting rooms, and manage class status."
       />
-      <LiveClassesPanel />
+      <TeacherLiveClassesPanel />
     </DashboardLayout>
   );
 }

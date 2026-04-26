@@ -359,7 +359,7 @@ export function StudentLiveClassesPanel() {
             {liveClass.meetingUrl ? (
               <div className="mt-4 flex flex-wrap gap-2">
                 <PrimaryButton onClick={() => window.open(liveClass.meetingUrl, "_blank", "noopener,noreferrer")}>
-                  {liveClass.status === "live" ? "Join live class" : "Open live room"}
+                  Join class
                 </PrimaryButton>
                 {liveClass.recordingUrl ? (
                   <SecondaryButton onClick={() => window.open(liveClass.recordingUrl ?? undefined, "_blank", "noopener,noreferrer")}>
@@ -367,7 +367,9 @@ export function StudentLiveClassesPanel() {
                   </SecondaryButton>
                 ) : null}
               </div>
-            ) : null}
+            ) : (
+              <p className="mt-4 text-sm text-muted-foreground">Meeting link not available.</p>
+            )}
           </div>
         ))}
       </div>

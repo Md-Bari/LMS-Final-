@@ -839,6 +839,25 @@ export function LiveClassMonitorPanel() {
               <div className="rounded-[1.2rem] border border-foreground/10 bg-background/70 p-3 dark:border-white/8 dark:bg-white/5">1h reminder: {liveClass.reminder1h ? "On" : "Off"}</div>
               <div className="rounded-[1.2rem] border border-foreground/10 bg-background/70 p-3 dark:border-white/8 dark:bg-white/5">Recording: {liveClass.recordingUrl ? "Available" : "Pending"}</div>
             </div>
+            <div className="mt-4 rounded-[1.2rem] border border-foreground/10 bg-background/70 p-3 text-sm text-muted-foreground dark:border-white/8 dark:bg-white/5">
+              {liveClass.meetingUrl ? (
+                <>Meeting link: <span className="font-semibold text-foreground">{liveClass.meetingUrl}</span></>
+              ) : (
+                "Meeting link not available."
+              )}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <PrimaryButton
+                onClick={() => {
+                  if (!liveClass.meetingUrl) {
+                    return;
+                  }
+                  window.open(liveClass.meetingUrl, "_blank", "noopener,noreferrer");
+                }}
+              >
+                Join class
+              </PrimaryButton>
+            </div>
           </div>
         ))}
       </div>

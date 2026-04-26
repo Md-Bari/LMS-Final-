@@ -24,6 +24,7 @@ class LiveClassController extends Controller
 
         $query = $this->visibleLiveClassesQuery($user)
             ->with(['course:id,tenant_id,title', 'teacher:id,name', 'participants', 'recordings'])
+            ->latest('start_time')
             ->latest('scheduled_at');
 
         return response()->json([
@@ -38,39 +39,51 @@ class LiveClassController extends Controller
 
         $validated = $request->validate([
             'course_id' => ['required', 'exists:courses,id'],
+            'teacher_id' => ['nullable', 'exists:users,id'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'scheduled_at' => ['required', 'date', 'after:now'],
+            'start_time' => ['nullable', 'date', 'after:now', 'required_without:scheduled_at'],
+            'scheduled_at' => ['nullable', 'date', 'after:now', 'required_without:start_time'],
             'duration_minutes' => ['required', 'integer', 'min:15', 'max:300'],
-            'provider' => ['nullable', 'in:jitsi,agora'],
+            'platform' => ['nullable', 'string', 'max:50'],
+            'meeting_link' => ['nullable', 'url'],
+            'status' => ['nullable', 'in:scheduled,live,completed,recorded,cancelled'],
         ]);
 
         $course = Course::query()->findOrFail($validated['course_id']);
         abort_if($course->tenant_id !== $user->tenant_id, 404, 'Course not found.');
 
-        $roomSlug = Str::slug($validated['title']) . '-' . Str::lower(Str::random(8));
-        $provider = strtolower($validated['provider'] ?? 'jitsi');
+        $teacher = $this->resolveTeacher($user, $course, $validated['teacher_id'] ?? null);
+        $startTime = $validated['start_time'] ?? $validated['scheduled_at'];
+        $meetingLink = $this->resolveMeetingLink($validated['meeting_link'] ?? null, $validated['title']);
+        $platform = $this->resolvePlatform($validated['platform'] ?? null, $meetingLink);
+        $roomSlug = $this->extractRoomSlug($meetingLink, $validated['title']);
 
         $liveClass = LiveClass::query()->create([
             'tenant_id' => $user->tenant_id,
             'course_id' => $course->id,
-            'teacher_id' => $user->role === 'teacher' ? $user->id : ($course->teacher_id ?? $user->id),
+            'teacher_id' => $teacher->id,
+            'created_by' => $user->id,
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
-            'provider' => $provider,
+            'platform' => $platform,
+            'provider' => $this->providerLabelFromPlatform($platform),
             'room_slug' => $roomSlug,
-            'meeting_url' => $this->meetingUrlForProvider($provider, $roomSlug),
-            'scheduled_at' => $validated['scheduled_at'],
+            'meeting_link' => $meetingLink,
+            'meeting_url' => $meetingLink,
+            'start_time' => $startTime,
+            'scheduled_at' => $startTime,
+            'start_at' => $startTime,
             'duration_minutes' => $validated['duration_minutes'],
             'participant_limit' => max(1, $course->enrollments()->count()),
             'reminder_24h' => true,
             'reminder_1h' => true,
             'reminder_24h_sent' => false,
             'reminder_1h_sent' => false,
-            'status' => 'scheduled',
+            'status' => $validated['status'] ?? 'scheduled',
         ]);
 
-        $liveClass->load(['participants', 'recordings']);
+        $liveClass->load(['course:id,tenant_id,title', 'teacher:id,name', 'participants', 'recordings']);
 
         LmsSupport::audit($user, 'Scheduled live class', $liveClass->title, $request->ip());
         LmsSupport::notify($user->tenant, 'Student', 'live-class', sprintf('Live class "%s" has been scheduled.', $liveClass->title));
@@ -90,6 +103,100 @@ class LiveClassController extends Controller
         return response()->json([
             'success' => true,
             'data' => LmsSupport::serializeLiveClass($liveClass->load(['course:id,tenant_id,title', 'teacher:id,name', 'participants', 'recordings'])),
+        ]);
+    }
+
+    public function update(Request $request, LiveClass $liveClass): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        $this->authorizeManageLiveClass($user, $liveClass);
+
+        $validated = $request->validate([
+            'course_id' => ['sometimes', 'required', 'exists:courses,id'],
+            'teacher_id' => ['nullable', 'exists:users,id'],
+            'title' => ['sometimes', 'required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'start_time' => ['nullable', 'date'],
+            'scheduled_at' => ['nullable', 'date'],
+            'duration_minutes' => ['sometimes', 'required', 'integer', 'min:15', 'max:300'],
+            'platform' => ['nullable', 'string', 'max:50'],
+            'meeting_link' => ['nullable', 'url'],
+            'status' => ['nullable', 'in:scheduled,live,completed,recorded,cancelled'],
+        ]);
+
+        $course = $liveClass->course;
+
+        if (array_key_exists('course_id', $validated)) {
+            $course = Course::query()->findOrFail($validated['course_id']);
+            abort_if($course->tenant_id !== $user->tenant_id, 404, 'Course not found.');
+            $liveClass->course_id = $course->id;
+            $liveClass->tenant_id = $course->tenant_id;
+        }
+
+        if (array_key_exists('teacher_id', $validated)) {
+            $teacher = $this->resolveTeacher($user, $course, $validated['teacher_id']);
+            $liveClass->teacher_id = $teacher->id;
+        }
+
+        if ($user->role === 'teacher') {
+            $liveClass->teacher_id = $user->id;
+        }
+
+        if (array_key_exists('title', $validated)) {
+            $liveClass->title = $validated['title'];
+        }
+
+        if (array_key_exists('description', $validated)) {
+            $liveClass->description = $validated['description'];
+        }
+
+        if (array_key_exists('duration_minutes', $validated)) {
+            $liveClass->duration_minutes = $validated['duration_minutes'];
+        }
+
+        if (array_key_exists('status', $validated)) {
+            $liveClass->status = $validated['status'];
+        }
+
+        $startTime = $validated['start_time'] ?? $validated['scheduled_at'] ?? null;
+        if ($startTime !== null) {
+            $liveClass->start_time = $startTime;
+            $liveClass->scheduled_at = $startTime;
+            $liveClass->start_at = $startTime;
+        }
+
+        if (array_key_exists('meeting_link', $validated)) {
+            $liveClass->meeting_link = $this->resolveMeetingLink($validated['meeting_link'], $liveClass->title);
+            $liveClass->meeting_url = $liveClass->meeting_link;
+            $liveClass->room_slug = $this->extractRoomSlug($liveClass->meeting_link, $liveClass->title);
+        }
+
+        if (array_key_exists('platform', $validated) || array_key_exists('meeting_link', $validated)) {
+            $platform = $this->resolvePlatform($validated['platform'] ?? $liveClass->platform, $liveClass->meeting_link);
+            $liveClass->platform = $platform;
+            $liveClass->provider = $this->providerLabelFromPlatform($platform);
+        }
+
+        $liveClass->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Live class updated successfully.',
+            'data' => LmsSupport::serializeLiveClass($liveClass->fresh()->load(['course:id,tenant_id,title', 'teacher:id,name', 'participants', 'recordings'])),
+        ]);
+    }
+
+    public function destroy(Request $request, LiveClass $liveClass): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        $this->authorizeManageLiveClass($user, $liveClass);
+
+        $title = $liveClass->title;
+        $liveClass->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => sprintf('Live class "%s" deleted successfully.', $title),
         ]);
     }
 
@@ -138,7 +245,7 @@ class LiveClassController extends Controller
         $recording = LiveClassRecording::query()->create([
             'tenant_id' => $liveClass->tenant_id,
             'live_class_id' => $liveClass->id,
-            'recording_url' => $validated['recording_url'] ?? $liveClass->recording_url ?? $liveClass->meeting_url,
+            'recording_url' => $validated['recording_url'] ?? $liveClass->recording_url ?? $liveClass->meeting_link ?? $liveClass->meeting_url,
             'duration_seconds' => $validated['duration_seconds'] ?? ($liveClass->duration_minutes * 60),
             'duration' => $validated['duration_seconds'] ?? ($liveClass->duration_minutes * 60),
         ]);
@@ -207,7 +314,7 @@ class LiveClassController extends Controller
 
         return response()->json([
             'success' => true,
-            'meeting_url' => $liveClass->meeting_url,
+            'meeting_url' => $liveClass->meeting_link ?? $liveClass->meeting_url,
             'data' => [
                 'id' => $participant->id,
                 'studentId' => $participant->student_id,
@@ -325,11 +432,91 @@ class LiveClassController extends Controller
         }
     }
 
-    private function meetingUrlForProvider(string $provider, string $roomSlug): string
+    private function resolveTeacher(User $actor, Course $course, int|string|null $teacherId): User
     {
-        return match ($provider) {
-            'agora' => 'https://app.agora.io/call/' . $roomSlug,
-            default => 'https://meet.jit.si/' . $roomSlug,
+        if ($actor->role === 'teacher') {
+            return $actor;
+        }
+
+        $resolvedTeacherId = $teacherId ?? $course->teacher_id ?? $actor->id;
+        $teacher = User::query()->findOrFail($resolvedTeacherId);
+
+        abort_if($teacher->tenant_id !== $actor->tenant_id, 403, 'Assigned teacher must belong to your tenant.');
+        abort_if(! in_array($teacher->role, ['teacher', 'admin'], true), 422, 'Assigned user must be a teacher or admin.');
+
+        return $teacher;
+    }
+
+    private function resolveMeetingLink(?string $meetingLink, string $title): string
+    {
+        $normalized = trim((string) $meetingLink);
+
+        if ($normalized === '') {
+            return $this->generateJitsiLink($title);
+        }
+
+        if (! str_starts_with(strtolower($normalized), 'https://')) {
+            abort(422, 'The meeting link must be a valid HTTPS URL.');
+        }
+
+        return $normalized;
+    }
+
+    private function resolvePlatform(?string $platform, string $meetingLink): string
+    {
+        $normalized = strtolower(trim((string) $platform));
+
+        if ($normalized !== '') {
+            return str_replace(' ', '-', $normalized);
+        }
+
+        $host = strtolower((string) parse_url($meetingLink, PHP_URL_HOST));
+
+        if (str_contains($host, 'meet.google.com')) {
+            return 'google-meet';
+        }
+
+        if (str_contains($host, 'zoom.us')) {
+            return 'zoom';
+        }
+
+        if (str_contains($host, 'meet.jit.si') || str_contains($host, 'jitsi')) {
+            return 'jitsi';
+        }
+
+        if (str_contains($host, 'teams.microsoft.com')) {
+            return 'teams';
+        }
+
+        return 'custom';
+    }
+
+    private function providerLabelFromPlatform(string $platform): string
+    {
+        return match ($platform) {
+            'google-meet' => 'Google Meet',
+            'zoom' => 'Zoom',
+            'teams' => 'Teams',
+            'jitsi' => 'Jitsi',
+            default => ucfirst(str_replace('-', ' ', $platform)),
         };
+    }
+
+    private function extractRoomSlug(string $meetingLink, string $title): string
+    {
+        $path = trim((string) parse_url($meetingLink, PHP_URL_PATH), '/');
+        $candidate = trim(Str::afterLast($path, '/'));
+
+        if ($candidate !== '') {
+            return Str::slug($candidate);
+        }
+
+        return Str::slug($title) . '-' . Str::lower(Str::random(6));
+    }
+
+    private function generateJitsiLink(string $title): string
+    {
+        $slug = Str::slug($title ?: 'live-class') . '-' . Str::lower(Str::random(6));
+        return 'https://meet.jit.si/' . $slug;
     }
 }

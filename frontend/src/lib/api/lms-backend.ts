@@ -18,6 +18,7 @@ const API_BASE_URL =
 const TOKEN_STORAGE_KEY = "betopia-auth-token";
 
 type JsonValue = Record<string, unknown>;
+const MARKETING_SESSION_STORAGE_KEY = "betopia-marketing-session";
 
 type TeacherAssessmentBootstrap = {
   courses: Course[];
@@ -146,13 +147,14 @@ function normalizeAssessment(assessment: Record<string, unknown>): Assessment {
 }
 
 function normalizeLiveClass(liveClass: Record<string, unknown>): LiveClass {
-  const startAt = String(liveClass.startAt ?? liveClass.scheduledAt ?? "");
+  const startAt = String(liveClass.startAt ?? liveClass.startTime ?? liveClass.scheduledAt ?? "");
+  const rawStatus = String(liveClass.status ?? "scheduled").toLowerCase();
   const normalizedStatus =
-    String(liveClass.status ?? "scheduled") === "live"
-      ? "live"
-      : String(liveClass.status ?? "scheduled") === "recorded"
-        ? "recorded"
-        : "scheduled";
+    rawStatus === "live" || rawStatus === "recorded" || rawStatus === "completed" || rawStatus === "cancelled"
+      ? (rawStatus as LiveClass["status"])
+      : "scheduled";
+  const provider = String(liveClass.provider ?? liveClass.platform ?? "Jitsi");
+  const meetingUrl = liveClass.meetingLink ? String(liveClass.meetingLink) : liveClass.meetingUrl ? String(liveClass.meetingUrl) : undefined;
 
   return {
     id: String(liveClass.id),
@@ -163,8 +165,8 @@ function normalizeLiveClass(liveClass: Record<string, unknown>): LiveClass {
     startAt,
     durationMinutes: Number(liveClass.durationMinutes ?? 0),
     participantLimit: Number(liveClass.participantLimit ?? 0),
-    provider: "Jitsi" as const,
-    meetingUrl: liveClass.meetingUrl ? String(liveClass.meetingUrl) : undefined,
+    provider,
+    meetingUrl,
     recordingUrl: liveClass.recordingUrl ? String(liveClass.recordingUrl) : null,
     reminder24h: Boolean(liveClass.reminder24h),
     reminder1h: Boolean(liveClass.reminder1h),
@@ -257,6 +259,21 @@ async function parseJsonSafe(response: Response) {
 
 function storageAvailable() {
   return typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
+}
+
+function getMarketingSessionId() {
+  if (!storageAvailable()) {
+    return null;
+  }
+
+  const existing = window.sessionStorage.getItem(MARKETING_SESSION_STORAGE_KEY);
+  if (existing) {
+    return existing;
+  }
+
+  const generated = `mk-${Math.random().toString(36).slice(2, 12)}`;
+  window.sessionStorage.setItem(MARKETING_SESSION_STORAGE_KEY, generated);
+  return generated;
 }
 
 export function getStoredToken() {
@@ -608,28 +625,71 @@ export async function completeLessonOnBackend(courseId: string, lessonId: string
 export async function createLiveClassOnBackend(payload: {
   title: string;
   courseId: string;
-  startAt: string;
+  startTime: string;
   durationMinutes: number;
+  platform?: string;
+  meetingLink?: string;
+  description?: string;
+  teacherId?: string;
 }) {
-  const response = await apiFetch("/api/v1/live-classes", {
+  const response = await apiFetch("/api/live-classes", {
     method: "POST",
     body: JSON.stringify({
       title: payload.title,
       course_id: Number(payload.courseId),
-      scheduled_at: payload.startAt,
-      duration_minutes: payload.durationMinutes
+      start_time: payload.startTime,
+      duration_minutes: payload.durationMinutes,
+      platform: payload.platform?.trim() ? payload.platform : undefined,
+      meeting_link: payload.meetingLink?.trim() ? payload.meetingLink : undefined,
+      description: payload.description?.trim() ? payload.description : undefined,
+      teacher_id: payload.teacherId ? Number(payload.teacherId) : undefined
     })
   });
 
   return unwrapResponse<{ data: unknown }>(response);
 }
 
+export async function trackMarketingEvent(payload: {
+  action: string;
+  target?: string;
+  path?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const sessionId = getMarketingSessionId();
+
+  try {
+    await fetch(apiUrl("/api/v1/public/marketing-events"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({
+        action: payload.action,
+        target: payload.target,
+        path: payload.path ?? (typeof window !== "undefined" ? window.location.pathname : null),
+        session_id: sessionId,
+        metadata: payload.metadata ?? {}
+      })
+    });
+  } catch {
+    // Ignore analytics errors; this should never block user action.
+  }
+}
+
+export async function fetchLiveClassesFromBackend(): Promise<LiveClass[]> {
+  const response = await apiFetch("/api/live-classes");
+  const payload = await unwrapResponse<{ data: LiveClass[] }>(response);
+
+  return (payload.data ?? []).map((liveClass) => normalizeLiveClass(liveClass as unknown as Record<string, unknown>));
+}
+
 export async function updateLiveClassStatusOnBackend(
   liveClassId: string,
-  status: "scheduled" | "live" | "recorded"
+  status: "scheduled" | "live" | "recorded" | "completed" | "cancelled"
 ) {
-  const response = await apiFetch(`/api/v1/live-classes/${liveClassId}/status`, {
-    method: "PATCH",
+  const response = await apiFetch(`/api/live-classes/${liveClassId}`, {
+    method: "PUT",
     body: JSON.stringify({ status })
   });
 

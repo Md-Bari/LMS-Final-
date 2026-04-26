@@ -34,14 +34,20 @@ class LiveClassSeeder extends Seeder
                             'title' => $course->title . ' Live Session ' . ($sessionIndex + 1),
                         ],
                         [
+                            'tenant_id' => $course->tenant_id,
                             'teacher_id' => $course->teacher_id,
+                            'created_by' => $course->teacher_id,
+                            'meeting_link' => BangladeshLmsDataset::meetingUrl($course->tenant->subdomain, Str::slug($course->title), $sessionIndex),
                             'meeting_url' => BangladeshLmsDataset::meetingUrl($course->tenant->subdomain, Str::slug($course->title), $sessionIndex),
                             'recording_url' => $status === 'completed'
                                 ? BangladeshLmsDataset::recordingUrl($course->tenant->subdomain, Str::slug($course->title), $sessionIndex)
                                 : null,
+                            'start_time' => Carbon::now()->subDays(($courseIndex + 1) * 2)->addDays($sessionIndex + 1),
+                            'scheduled_at' => Carbon::now()->subDays(($courseIndex + 1) * 2)->addDays($sessionIndex + 1),
                             'start_at' => Carbon::now()->subDays(($courseIndex + 1) * 2)->addDays($sessionIndex + 1),
                             'duration_minutes' => 60 + (($courseIndex + $sessionIndex) % 30),
                             'participant_limit' => 50 + (($courseIndex * 5) % 150),
+                            'platform' => 'jitsi',
                             'provider' => 'Jitsi',
                             'reminder_24h' => true,
                             'reminder_1h' => true,

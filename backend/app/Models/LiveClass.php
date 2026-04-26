@@ -13,15 +13,19 @@ class LiveClass extends Model
         'tenant_id',
         'course_id',
         'teacher_id',
+        'created_by',
         'title',
         'description',
         'room_slug',
+        'meeting_link',
         'meeting_url',
         'recording_url',
+        'start_time',
         'scheduled_at',
         'start_at',
         'duration_minutes',
         'participant_limit',
+        'platform',
         'provider',
         'reminder_24h',
         'reminder_1h',
@@ -33,6 +37,7 @@ class LiveClass extends Model
     protected function casts(): array
     {
         return [
+            'start_time' => 'datetime',
             'scheduled_at' => 'datetime',
             'start_at' => 'datetime',
             'reminder_24h' => 'boolean',

@@ -68,8 +68,12 @@ type CreateAssessmentPayload = {
 type ScheduleLiveClassPayload = {
   title: string;
   courseId: string;
-  startAt: string;
+  startTime: string;
   durationMinutes: number;
+  platform?: string;
+  meetingLink?: string;
+  description?: string;
+  teacherId?: string;
 };
 
 type MockLmsContextType = {
@@ -96,7 +100,7 @@ type MockLmsContextType = {
   publishAssessment: (assessmentId: string) => Promise<void>;
   submitAssessment: (assessmentId: string, studentName: string, answerText: string) => Promise<void>;
   scheduleLiveClass: (payload: ScheduleLiveClassPayload) => Promise<void>;
-  setLiveClassStatus: (classId: string, status: "scheduled" | "live" | "recorded") => Promise<void>;
+  setLiveClassStatus: (classId: string, status: "scheduled" | "live" | "recorded" | "completed" | "cancelled") => Promise<void>;
   issueCertificate: (studentName: string, courseId: string) => Promise<void>;
   revokeCertificate: (certificateId: string) => Promise<void>;
   updatePlan: (plan: PlanTier) => Promise<void>;
@@ -685,11 +689,11 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
             vendorId: current.branding.vendorId,
             title: payload.title,
             courseId: payload.courseId,
-            startAt: payload.startAt,
+            startAt: payload.startTime,
             durationMinutes: payload.durationMinutes,
             participantLimit: planMatrix[current.billing.plan].liveLimit || 100,
             provider: "Jitsi",
-            meetingUrl: buildLocalMeetingUrl(payload.title),
+            meetingUrl: payload.meetingLink?.trim() ? payload.meetingLink : buildLocalMeetingUrl(payload.title),
             recordingUrl: null,
             reminder24h: true,
             reminder1h: true,
