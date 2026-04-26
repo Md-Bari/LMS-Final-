@@ -861,7 +861,7 @@ export default function SmartLMSHomePage() {
               <p style={{ fontSize: 12, fontWeight: 700, color: "#E8A020", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>Course catalog</p>
               <h2 style={{ fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 800, color: "#1A1A2E" }}>Explore Our Latest Courses</h2>
             </div>
-            <a href="/catalog" style={{ fontSize: 14, fontWeight: 600, color: "#E8A020", textDecoration: "none" }}>See All Courses →</a>
+            <Link href="/catalog" style={{ fontSize: 14, fontWeight: 600, color: "#E8A020", textDecoration: "none" }}>See All Courses ?</Link>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
@@ -931,7 +931,7 @@ export default function SmartLMSHomePage() {
                 }}
               >
                 <StarRating count={t.rating} />
-                <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.7, margin: "12px 0 20px" }}>"{t.text}"</p>
+                <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.7, margin: "12px 0 20px" }}>&ldquo;{t.text}&rdquo;</p>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div
                     style={{
@@ -1016,8 +1016,7 @@ export default function SmartLMSHomePage() {
                   ))}
                 </div>
 
-                <a
-                  href="/pricing"
+                <Link href="/pricing"
                   style={{
                     display: "block",
                     textAlign: "center",
@@ -1041,7 +1040,7 @@ export default function SmartLMSHomePage() {
                   }}
                 >
                   Get started
-                </a>
+                </Link>
               </div>
             ))}
           </div>
@@ -1068,7 +1067,7 @@ export default function SmartLMSHomePage() {
             <p style={{ fontSize: 15, color: "#9CA3AF" }}>Schedule a demo and see Smart LMS live in 30 minutes.</p>
           </div>
           <div style={{ display: "flex", gap: 14 }}>
-            <a
+            <Link
               href="/contact"
               style={{
                 background: "#E8A020",
@@ -1081,8 +1080,8 @@ export default function SmartLMSHomePage() {
               }}
             >
               Contact us
-            </a>
-            <a
+            </Link>
+            <Link
               href="/signup"
               style={{
                 background: "transparent",
@@ -1096,7 +1095,7 @@ export default function SmartLMSHomePage() {
               }}
             >
               +1 800 555 0162
-            </a>
+            </Link>
           </div>
         </div>
       </section>
