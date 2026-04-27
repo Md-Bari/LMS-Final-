@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, CreditCard, Mail, ReceiptText, SendHorizontal, Users } from "lucide-react";
+import { Activity, Bell, CheckCheck, ClipboardCheck, CreditCard, Lock, Mail, ReceiptText, SendHorizontal, TrendingUp, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import {
@@ -208,7 +208,63 @@ export function CompliancePanel() {
   const { sendCustomEmail } = useMockLms();
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+    <div className="space-y-6">
+      <div className="overflow-hidden rounded-[1.5rem] bg-[#f5f4ef] border-[6px] border-[#10b981] p-8 sm:p-10 text-slate-900 shadow-soft dark:bg-[#13212a] dark:text-white dark:border-[#10b981]/50">
+        <h2 className="text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.05] tracking-[-0.04em]">
+          <span className="font-medium text-slate-800 dark:text-white/80">Purpose of a</span>
+          <br />
+          <span className="font-extrabold text-black dark:text-white">Compliance Report</span>
+        </h2>
+        
+        <div className="mt-10 grid gap-8">
+          <div className="flex gap-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#10b981] text-white">
+              <TrendingUp className="h-6 w-6" />
+            </div>
+            <p className="text-lg leading-7 text-slate-700 dark:text-white/80">
+              <strong className="font-bold text-black dark:text-white">Unblocking deals</strong> that would have been held up by security concerns or tedious questionnaires.
+            </p>
+          </div>
+          
+          <div className="flex gap-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#10b981] text-white">
+              <ClipboardCheck className="h-6 w-6" />
+            </div>
+            <p className="text-lg leading-7 text-slate-700 dark:text-white/80">
+              <strong className="font-bold text-black dark:text-white">Providing proof of successful audits and assessments</strong> like SOC 2, ISO 27001, HIPAA, PCI DSS, FedRAMP, and CMMC as well as your current compliance status.
+            </p>
+          </div>
+
+          <div className="flex gap-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#10b981] text-white">
+              <Lock className="h-6 w-6" />
+            </div>
+            <p className="text-lg leading-7 text-slate-700 dark:text-white/80">
+              <strong className="font-bold text-black dark:text-white">Demonstrating accountability and transparency</strong> to customers, partners, regulators, boards, and other stakeholders.
+            </p>
+          </div>
+
+          <div className="flex gap-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#10b981] text-white">
+              <CheckCheck className="h-6 w-6" />
+            </div>
+            <p className="text-lg leading-7 text-slate-700 dark:text-white/80">
+              <strong className="font-bold text-black dark:text-white">Tracking and reporting on compliance activities</strong> to identify any gaps, plan and track remediation efforts, and ensure continuous improvement over time.
+            </p>
+          </div>
+
+          <div className="flex gap-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#10b981] text-white">
+              <Activity className="h-6 w-6" />
+            </div>
+            <p className="text-lg leading-7 text-slate-700 dark:text-white/80">
+              <strong className="font-bold text-black dark:text-white">Reducing regulatory and reputational risk</strong> by showing you’ve taken proactive steps to comply with laws and frameworks that apply to your industry, location, or data.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
       <Section title="Compliance reporting" subtitle="Track completion by employee, department, and role, then export the audit-ready view as CSV exactly as described in the SRS.">
         <div className="overflow-auto rounded-[1.4rem] border border-foreground/10 bg-white dark:border-white/8 dark:bg-[#13212a]">
           <table className="min-w-full text-left text-sm">
@@ -343,6 +399,7 @@ export function CompliancePanel() {
           </div>
         </div>
       </Section>
+      </div>
     </div>
   );
 }

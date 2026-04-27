@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   BookOpen,
   CheckCircle,
@@ -10,15 +10,18 @@ import {
   LockKeyhole,
   PenSquare,
   Play,
+  RefreshCw,
   SendHorizontal,
-  Video
+  Video,
+  X 
 } from "lucide-react";
 import { DashboardLayout, EmptyState, PageHeader, ProgressBar } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
 import { percentageForStudent } from "@/lib/utils/lms-helpers";
 import { YouTubePlayer, extractYouTubeId } from "@/components/shared/youtube-player";
 import Link from "next/link";
-import type { Assessment } from "@/lib/mock-lms";
+import type { Assessment, Course } from "@/lib/mock-lms";
+import { fetchMyCoursesFromBackend, getStoredToken } from "@/lib/api/lms-backend";
 
 type AssessmentResult = {
   score: number;
@@ -34,23 +37,58 @@ export default function StudentCoursesPage() {
   const [submittingAssessmentId, setSubmittingAssessmentId] = useState<string | null>(null);
   const [alert, setAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [activeVideo, setActiveVideo] = useState<{ url: string; title: string } | null>(null);
+  const [activeDocument, setActiveDocument] = useState<{ url: string; title: string; mime?: string | null } | null>(null);
   const [openAssessmentByModule, setOpenAssessmentByModule] = useState<Record<string, string>>({});
   const [mcqAnswersByAssessment, setMcqAnswersByAssessment] = useState<Record<string, Record<string, string>>>({});
   const [writtenAnswerByAssessment, setWrittenAnswerByAssessment] = useState<Record<string, string>>({});
   const [resultByAssessment, setResultByAssessment] = useState<Record<string, AssessmentResult>>({});
 
+  // Backend state — must be declared before useCallback that uses them
+  const [backendCourses, setBackendCourses] = useState<Course[] | null>(null);
+  const [backendAssessments, setBackendAssessments] = useState<Assessment[]>([]);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const studentName = currentUser?.name ?? state.users.find((u) => u.role === "student")?.name ?? "Student";
 
-  const myEnrollments = state.enrollments.filter((enrollment) =>
-    enrollment.studentId === currentUser?.id || enrollment.studentName === studentName
-  );
-  const enrolledCourses = state.courses.filter((course) => myEnrollments.some((enrollment) => enrollment.courseId === course.id));
+  const fetchCourses = useCallback(async () => {
+    const token = getStoredToken();
+    if (!token) {
+      setBackendCourses(state.courses.filter((c) => c.status === "published"));
+      setBackendAssessments(state.assessments);
+      setLoadingCourses(false);
+      return;
+    }
+      try {
+        setLoadingCourses(true);
+        setLoadError(null);
+        const result = await fetchMyCoursesFromBackend();
+        // If we got a successful response, we use those courses (even if empty)
+        setBackendCourses(result.courses);
+        setBackendAssessments(result.assessments);
+      } catch (err) {
+        // Only fall back to local published courses on actual network/backend error
+        setBackendCourses(state.courses.filter((c) => c.status === "published"));
+        setBackendAssessments(state.assessments);
+        setLoadError(err instanceof Error ? err.message : "Could not reach backend. Showing local data.");
+      } finally {
+        setLoadingCourses(false);
+      }
+  }, [state.courses, state.assessments]);
+
+  useEffect(() => {
+    void fetchCourses();
+  }, [fetchCourses]);
+
+  const enrolledCourses = backendCourses ?? state.courses.filter((c) => c.status === "published");
   const activeCourse = enrolledCourses.find((course) => course.id === selectedCourse) ?? enrolledCourses[0];
+
 
   const coursePublishedAssessments = useMemo(() => {
     if (!activeCourse) return [];
-    return state.assessments.filter((assessment) => assessment.courseId === activeCourse.id && assessment.status === "published");
-  }, [activeCourse, state.assessments]);
+    const sourceAssessments = backendAssessments.length > 0 ? backendAssessments : state.assessments;
+    return sourceAssessments.filter((a) => a.courseId === activeCourse.id && a.status === "published");
+  }, [activeCourse, backendAssessments, state.assessments]);
 
   const moduleAssessmentsMap = useMemo(() => {
     if (!activeCourse) return {} as Record<string, Assessment[]>;
@@ -73,6 +111,7 @@ export default function StudentCoursesPage() {
 
     return map;
   }, [activeCourse, coursePublishedAssessments]);
+
 
   const latestResultByAssessment = useMemo(() => {
     const map: Record<string, AssessmentResult> = { ...resultByAssessment };
@@ -201,7 +240,17 @@ export default function StudentCoursesPage() {
 
   return (
     <DashboardLayout role="student">
-      <PageHeader title="My Courses" subtitle="Continue learning where you left off." />
+      <div className="flex items-center justify-between">
+        <PageHeader title="My Courses" subtitle="Continue learning where you left off." />
+        <button 
+          onClick={fetchCourses} 
+          disabled={loadingCourses}
+          className="flex items-center gap-2 text-sm font-medium text-primary hover:opacity-80 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${loadingCourses ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
+      </div>
 
       {alert ? (
         <div className={`mb-6 flex items-center justify-between rounded-xl p-4 text-sm ${alert.type === "success" ? "alert-success" : "alert-error"}`}>
@@ -210,11 +259,28 @@ export default function StudentCoursesPage() {
         </div>
       ) : null}
 
-      {enrolledCourses.length === 0 ? (
+      {loadError ? (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/30 dark:bg-red-950/20 dark:text-red-400">
+          <p className="font-semibold text-red-900 dark:text-red-300">Issue loading courses</p>
+          <p className="mt-1">{loadError}</p>
+          <button onClick={fetchCourses} className="mt-3 font-semibold underline underline-offset-4 hover:opacity-80">
+            Try again
+          </button>
+        </div>
+      ) : null}
+
+      {loadingCourses ? (
+        <div className="grid h-[400px] place-content-center">
+          <div className="flex flex-col items-center gap-4">
+            <RefreshCw className="h-8 w-8 animate-spin text-primary opacity-40" />
+            <p className="text-sm font-medium text-muted-foreground">Fetching your courses...</p>
+          </div>
+        </div>
+      ) : enrolledCourses.length === 0 ? (
         <EmptyState
           icon={<BookOpen className="h-8 w-8" />}
-          title="No enrolled courses"
-          description="Browse the catalog and enroll in a course to get started."
+          title="No courses found"
+          description={getStoredToken() ? "You haven't enrolled in any courses yet." : "Please sign in to access your enrolled courses."}
           action={<Link href="/catalog" className="btn-accent">Browse Catalog</Link>}
         />
       ) : (
@@ -355,16 +421,15 @@ export default function StudentCoursesPage() {
                                     </button>
                                   ) : null}
                                   {hasFile ? (
-                                    <a
-                                      href={gateLocksModule ? undefined : lesson.contentUrl ?? undefined}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      aria-disabled={gateLocksModule}
+                                    <button
+                                      type="button"
+                                      disabled={gateLocksModule}
+                                      onClick={() => setActiveDocument({ url: lesson.contentUrl!, title: lesson.title, mime: lesson.contentMime })}
                                       className={`btn-outline px-3 py-1.5 text-xs ${gateLocksModule ? "pointer-events-none opacity-60" : ""}`}
                                     >
                                       <FileText className="h-3 w-3" />
                                       Open content
-                                    </a>
+                                    </button>
                                   ) : null}
                                   {!completed ? (
                                     <button
@@ -514,6 +579,53 @@ export default function StudentCoursesPage() {
       {activeVideo ? (
         <YouTubePlayer videoUrl={activeVideo.url} title={activeVideo.title} onClose={() => setActiveVideo(null)} />
       ) : null}
+
+      {activeDocument ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActiveDocument(null)} />
+          <div className="relative flex h-[90vh] w-[95vw] max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-[#13212a]">
+            <div className="flex shrink-0 items-center justify-between border-b border-foreground/10 px-5 py-4">
+              <h3 className="font-semibold text-foreground truncate max-w-[70%]">{activeDocument.title}</h3>
+              <div className="flex items-center gap-2">
+                <a
+                  href={activeDocument.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-outline px-3 py-1.5 text-xs"
+                >
+                  Open in new tab
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setActiveDocument(null)}
+                  className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto bg-muted/30">
+              {activeDocument.mime?.startsWith("video/") || activeDocument.url.match(/\.mp4(\?.*)?$/) ? (
+                <div className="flex h-full w-full items-center justify-center bg-black">
+                  <video controls src={activeDocument.url} className="max-h-full max-w-full" />
+                </div>
+              ) : activeDocument.mime?.startsWith("image/") || activeDocument.url.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/) ? (
+                <div className="flex h-full w-full items-center justify-center p-4">
+                  <img src={activeDocument.url} alt={activeDocument.title} className="max-h-full max-w-full rounded-lg object-contain" />
+                </div>
+              ) : (
+                <iframe
+                  src={activeDocument.url}
+                  title={activeDocument.title}
+                  className="h-full w-full border-0"
+                  allow="fullscreen"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </DashboardLayout>
   );
 }
+

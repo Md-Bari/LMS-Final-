@@ -52,6 +52,10 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/courses/{course}/lessons/{lesson}/complete', [CourseController::class, 'completeLesson']);
 
         Route::get('/enrollments', [EnrollmentController::class, 'index']);
+        Route::get('/student/my-courses', [EnrollmentController::class, 'myCourses']);
+        Route::get('/student/my-submissions', [EnrollmentController::class, 'mySubmissions']);
+        Route::get('/student/live-classes', [LiveClassController::class, 'index']);
+
         Route::post('/enrollments', [EnrollmentController::class, 'store']);
         Route::patch('/enrollments/{enrollment}', [EnrollmentController::class, 'update']);
         Route::get('/wishlists', [WishlistController::class, 'index']);

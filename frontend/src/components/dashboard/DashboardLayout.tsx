@@ -150,6 +150,7 @@ const studentNav: NavSection[] = [
     label: "Assessment",
     items: [
       { href: "/student/assignments", label: "Assignments", icon: <CheckSquare className="w-4 h-4" /> },
+      { href: "/student/feedback", label: "Feedback & Marks", icon: <MessageSquare className="w-4 h-4" /> },
     ],
   },
   {

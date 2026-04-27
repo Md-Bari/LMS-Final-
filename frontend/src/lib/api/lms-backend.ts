@@ -646,6 +646,46 @@ export async function fetchCoursesFromBackend(search?: string) {
   return (payload.data ?? []).map((course) => normalizeCourse(course as unknown as Record<string, unknown>));
 }
 
+export async function fetchMyCoursesFromBackend(): Promise<{ courses: ReturnType<typeof normalizeCourse>[]; assessments: ReturnType<typeof normalizeAssessment>[] }> {
+  const response = await apiFetch("/api/v1/student/my-courses");
+  const payload = await unwrapResponse<{ data: unknown[]; assessments: unknown[] }>(response);
+  return {
+    courses: (payload.data ?? []).map((c) => normalizeCourse(c as Record<string, unknown>)),
+    assessments: (payload.assessments ?? []).map((a) => normalizeAssessment(a as Record<string, unknown>)),
+  };
+}
+
+export async function fetchStudentLiveClassesFromBackend(): Promise<LiveClass[]> {
+  const response = await apiFetch("/api/v1/student/live-classes");
+  const payload = await unwrapResponse<{ data: unknown[] }>(response);
+  return (payload.data ?? []).map((lc) => normalizeLiveClass(lc as Record<string, unknown>));
+}
+
+type StudentSubmission = {
+  id: string;
+  assessmentId: string;
+  assessmentTitle: string | null;
+  assessmentType: string | null;
+  courseId: string | null;
+  courseTitle: string | null;
+  answerText: string;
+  status: string | null;
+  score: number;
+  passingMark: number;
+  feedback: string | null;
+  aiFeedback: string | null;
+  teacherFeedback: string | null;
+  passed: boolean;
+  submittedAt: string | null;
+};
+
+export async function fetchMySubmissionsFromBackend(): Promise<StudentSubmission[]> {
+  const response = await apiFetch("/api/v1/student/my-submissions");
+  const payload = await unwrapResponse<{ data: StudentSubmission[] }>(response);
+  return payload.data ?? [];
+}
+
+
 export async function fetchPublicCoursesFromBackend(search?: string) {
   const params = new URLSearchParams();
   const normalizedSearch = search?.trim() ?? "";

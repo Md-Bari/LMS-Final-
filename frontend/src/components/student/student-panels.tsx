@@ -1,10 +1,12 @@
 "use client";
 
-import type { CourseModule } from "@/lib/mock-lms";
-import { Award, BookOpen, CalendarClock, CheckCircle2, FileText, Sparkles } from "lucide-react";
-import { useState } from "react";
+import type { CourseModule, LiveClass } from "@/lib/mock-lms";
+import { Award, BookOpen, CalendarClock, CheckCircle2, CheckCircle, XCircle, FileText, Sparkles, Video, ClipboardCheck, PenSquare, Play, RefreshCw, MessageSquare } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 
 import { useMockLms } from "@/providers/mock-lms-provider";
+import { YouTubePlayer } from "@/components/shared/youtube-player";
+import { fetchStudentLiveClassesFromBackend, fetchMySubmissionsFromBackend, getStoredToken } from "@/lib/api/lms-backend";
 
 import {
   Badge,
@@ -187,11 +189,13 @@ export function StudentCoursesPanel({ selectedCourseId }: { selectedCourseId?: s
   const studentName = currentUser?.name ?? "Student";
   const [showAllCourses, setShowAllCourses] = useState(false);
   const [showAllModules, setShowAllModules] = useState(false);
-  const selectedCourse = state.courses.find((course) => course.id === selectedCourseId) ?? state.courses[0];
+  const [activeVideo, setActiveVideo] = useState<{ url: string; title: string } | null>(null);
+  const publishedCourses = state.courses.filter((course) => course.status === "published");
+  const [activeCourseId, setActiveCourseId] = useState<string | undefined>(selectedCourseId);
+  const selectedCourse = state.courses.find((course) => course.id === (activeCourseId || selectedCourseId)) ?? publishedCourses[0] ?? state.courses[0];
   const selectedCourseCertificate = state.certificates.find(
     (certificate) => certificate.courseId === selectedCourse?.id && certificate.studentName === studentName && !certificate.revoked
   );
-  const publishedCourses = state.courses.filter((course) => course.status === "published");
   const visibleCourses = showAllCourses ? publishedCourses : publishedCourses.slice(0, 5);
   const visibleModules = showAllModules ? (selectedCourse?.modules ?? []) : (selectedCourse?.modules ?? []).slice(0, 5);
 
@@ -199,8 +203,15 @@ export function StudentCoursesPanel({ selectedCourseId }: { selectedCourseId?: s
     <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
       <Section title="My courses" subtitle="Progress, drip content, and next-step clarity are all visible from the learner side.">
         <div className="grid gap-4">
-          {visibleCourses.map((course, index) => (
-            <div key={course.id} className={`workspace-reveal ${index < 3 ? `workspace-delay-${index + 1}` : ""} relative overflow-hidden rounded-[1.7rem] border p-5 shadow-soft transition duration-300 hover:-translate-y-[3px] hover:shadow-glow dark:border-white/8 dark:bg-[#13212a] ${learnerCourseCardStyles[index % learnerCourseCardStyles.length]}`}>
+          {visibleCourses.map((course, index) => {
+            const isSelected = selectedCourse?.id === course.id;
+            return (
+            <button
+              key={course.id}
+              onClick={() => setActiveCourseId(course.id)}
+              type="button"
+              className={`text-left w-full workspace-reveal ${index < 3 ? `workspace-delay-${index + 1}` : ""} relative overflow-hidden rounded-[1.7rem] border p-5 shadow-soft transition duration-300 hover:-translate-y-[3px] hover:shadow-glow dark:border-white/8 dark:bg-[#13212a] ${isSelected ? "ring-2 ring-foreground/60 shadow-md" : ""} ${learnerCourseCardStyles[index % learnerCourseCardStyles.length]}`}
+            >
               <div className={`pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${learnerAccentBars[index % learnerAccentBars.length]}`} />
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -222,8 +233,8 @@ export function StudentCoursesPanel({ selectedCourseId }: { selectedCourseId?: s
                   />
                 </div>
               </div>
-            </div>
-          ))}
+            </button>
+          )})}
         </div>
         {publishedCourses.length > 5 ? <SeeMoreButton expanded={showAllCourses} remaining={publishedCourses.length - 5} onClick={() => setShowAllCourses((current) => !current)} /> : null}
       </Section>
@@ -246,13 +257,53 @@ export function StudentCoursesPanel({ selectedCourseId }: { selectedCourseId?: s
                 <div className="mt-4 grid gap-3">
                   {module.lessons.map((lesson) => {
                     const completed = lesson.completedBy.includes(studentName);
+                    const hasVideo = !!lesson.contentUrl && /youtube\.com|youtu\.be/.test(lesson.contentUrl);
+                    const videoId = hasVideo ? (lesson.contentUrl!.match(/[?&]v=([a-zA-Z0-9_-]{11})/)?.[1] ?? lesson.contentUrl!.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)?.[1]) : null;
+                    const thumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
+
                     return (
                       <div key={lesson.id} className={`group flex flex-wrap items-center justify-between gap-3 rounded-[1.2rem] border border-foreground/10 p-3 transition duration-300 hover:-translate-y-0.5 dark:border-white/8 ${completed ? "bg-[linear-gradient(135deg,rgba(15,118,110,0.08),rgba(255,255,255,0.78))]" : "bg-background/70 dark:bg-white/5"}`}>
-                        <div>
-                          <p className="font-medium">{lesson.title}</p>
-                          <p className="text-xs text-muted-foreground">{lesson.type} · {lesson.durationMinutes} min</p>
+                        <div className="flex items-center gap-3 w-full sm:w-auto flex-1 min-w-0">
+                          {hasVideo && thumbnail ? (
+                            <button
+                              type="button"
+                              onClick={() => setActiveVideo({ url: lesson.contentUrl!, title: lesson.title })}
+                              className="relative w-20 h-12 rounded-lg overflow-hidden shrink-0 border border-border/50 group/video"
+                            >
+                              <img src={thumbnail} alt="" className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover/video:bg-black/40 transition-colors">
+                                <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center">
+                                  <Play className="w-2.5 h-2.5 text-white fill-white ml-px" />
+                                </div>
+                              </div>
+                            </button>
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                              <FileText className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{lesson.title}</p>
+                            <p className="text-xs text-muted-foreground">{lesson.type} · {lesson.durationMinutes} min</p>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center flex-wrap shrink-0">
+                          {(lesson.contentUrl || lesson.type === "quiz" || lesson.type === "assignment") && (
+                            <SecondaryButton
+                              onClick={() => {
+                                if (hasVideo) {
+                                  setActiveVideo({ url: lesson.contentUrl!, title: lesson.title });
+                                } else if (lesson.type === "quiz" || lesson.type === "assignment") {
+                                  document.querySelector<HTMLButtonElement>('button[data-id="assessments"]')?.click();
+                                  setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 100);
+                                } else {
+                                  window.open(lesson.contentUrl!, "_blank", "noopener,noreferrer");
+                                }
+                              }}
+                            >
+                              {hasVideo ? "Watch Video" : (lesson.type === "quiz" || lesson.type === "assignment") ? "Take Assessment" : "View PDF/Content"}
+                            </SecondaryButton>
+                          )}
                           <Badge className={completed ? "border-[#0f766e]/20 bg-[#0f766e]/10 text-[#0f766e]" : "bg-white/70"}>{completed ? "completed" : "pending"}</Badge>
                           {!completed ? (
                             <SecondaryButton onClick={() => markLessonComplete(selectedCourse.id, lesson.id, studentName)}>
@@ -300,6 +351,14 @@ export function StudentCoursesPanel({ selectedCourseId }: { selectedCourseId?: s
           </div>
         </Section>
       ) : null}
+      
+      {activeVideo && (
+        <YouTubePlayer
+          videoUrl={activeVideo.url}
+          title={activeVideo.title}
+          onClose={() => setActiveVideo(null)}
+        />
+      )}
     </div>
   );
 }
@@ -325,74 +384,377 @@ export function StudentSettingsPanel() {
 
 export function StudentLiveClassesPanel() {
   const { state } = useMockLms();
-  const [showAllLiveClasses, setShowAllLiveClasses] = useState(false);
-  const visibleLiveClasses = showAllLiveClasses ? state.liveClasses : state.liveClasses.slice(0, 5);
+  const [liveClasses, setLiveClasses] = useState<LiveClass[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  function canJoinNow(liveClass: (typeof state.liveClasses)[number]) {
-    if (liveClass.status === "cancelled" || liveClass.status === "recorded") {
-      return false;
+  const fetchLiveClasses = useCallback(async () => {
+    const token = getStoredToken();
+    if (!token) {
+      setLiveClasses(state.liveClasses);
+      setLoading(false);
+      return;
     }
-
-    if (liveClass.canJoin !== undefined) {
-      return liveClass.canJoin;
+    try {
+      const data = await fetchStudentLiveClassesFromBackend();
+      setLiveClasses(data);
+      setLastUpdated(new Date());
+    } catch {
+      setLiveClasses(state.liveClasses);
+    } finally {
+      setLoading(false);
     }
+  }, [state.liveClasses]);
 
+  useEffect(() => {
+    void fetchLiveClasses();
+    // Auto-refresh every 30 seconds so going-live is reflected quickly
+    const interval = setInterval(() => { void fetchLiveClasses(); }, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchLiveClasses]);
+
+  // Group live classes by course
+  const courseGroups: Array<{ courseId: string; courseTitle: string; classes: LiveClass[] }> = [];
+  for (const liveClass of liveClasses) {
+    const course = state.courses.find((c) => c.id === liveClass.courseId);
+    const courseId = liveClass.courseId ?? "uncategorized";
+    const courseTitle = course?.title ?? liveClass.batchName ?? "General";
+    const existing = courseGroups.find((g) => g.courseId === courseId);
+    if (existing) { existing.classes.push(liveClass); }
+    else { courseGroups.push({ courseId, courseTitle, classes: [liveClass] }); }
+  }
+
+  function canJoinNow(liveClass: LiveClass) {
+    if (liveClass.status === "cancelled" || liveClass.status === "recorded") return false;
+    if (liveClass.canJoin !== undefined) return liveClass.canJoin;
     const startAt = new Date(liveClass.startAt).getTime();
     const endAt = liveClass.endAt ? new Date(liveClass.endAt).getTime() : startAt + liveClass.durationMinutes * 60 * 1000;
     const now = Date.now();
-
     return now >= startAt - 15 * 60 * 1000 && now <= endAt + 15 * 60 * 1000;
   }
 
+  const meetingLink = (liveClass: LiveClass) => liveClass.meetingUrl ?? liveClass.meetingLink;
+
+  const statusColors: Record<string, string> = {
+    live: "border-green-200 bg-green-50 text-green-800 dark:border-green-900/30 dark:bg-green-950/30 dark:text-green-400",
+    scheduled: "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/30 dark:bg-blue-950/30 dark:text-blue-400",
+    recorded: "border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-900/30 dark:bg-purple-950/30 dark:text-purple-400",
+    cancelled: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/30 dark:bg-red-950/30 dark:text-red-400",
+  };
+
   return (
-    <Section title="My live classes" subtitle="View upcoming sessions, schedule details, and session status without teacher scheduling controls.">
-      <div className="grid gap-4">
-        {visibleLiveClasses.map((liveClass) => (
-          <div key={liveClass.id} className="rounded-[1.4rem] border border-foreground/10 bg-white p-5 shadow-soft dark:border-white/8 dark:bg-[#13212a]">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-serif text-2xl">{liveClass.title}</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {new Date(liveClass.startAt).toLocaleString()} - {liveClass.endAt ? new Date(liveClass.endAt).toLocaleTimeString() : ""} · {liveClass.provider}
-                </p>
-                {liveClass.description ? <p className="mt-2 text-sm text-muted-foreground">{liveClass.description}</p> : null}
-                {liveClass.batchName ? <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{liveClass.batchName}</p> : null}
-              </div>
-              <Badge>{liveClass.status}</Badge>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[1.2rem] border border-foreground/10 bg-background/70 p-3 dark:border-white/8 dark:bg-white/5">
-                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Participant limit</p>
-                <p className="mt-2 font-semibold">{liveClass.participantLimit}</p>
-              </div>
-              <div className="rounded-[1.2rem] border border-foreground/10 bg-background/70 p-3 dark:border-white/8 dark:bg-white/5">
-                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">24h reminder</p>
-                <p className="mt-2 font-semibold">{liveClass.reminder24h ? "Enabled" : "Off"}</p>
-              </div>
-              <div className="rounded-[1.2rem] border border-foreground/10 bg-background/70 p-3 dark:border-white/8 dark:bg-white/5">
-                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">1h reminder</p>
-                <p className="mt-2 font-semibold">{liveClass.reminder1h ? "Enabled" : "Off"}</p>
-              </div>
-            </div>
-            {liveClass.meetingUrl ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                <PrimaryButton
-                  disabled={!canJoinNow(liveClass)}
-                  onClick={() => window.open(liveClass.meetingUrl, "_blank", "noopener,noreferrer")}
-                >
-                  {liveClass.status === "live" || canJoinNow(liveClass) ? "Join Live Class" : "Join disabled"}
-                </PrimaryButton>
-                {liveClass.recordingUrl ? (
-                  <SecondaryButton onClick={() => window.open(liveClass.recordingUrl ?? undefined, "_blank", "noopener,noreferrer")}>
-                    Watch recording
-                  </SecondaryButton>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        ))}
+    <Section
+      title="Live Classes"
+      subtitle="Course-wise live sessions — auto-refreshes every 30s so you see when your teacher goes live instantly."
+    >
+      {/* Header: last updated + refresh */}
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Loading..."}
+        </p>
+        <button
+          type="button"
+          onClick={() => { setLoading(true); void fetchLiveClasses(); }}
+          disabled={loading}
+          className="flex items-center gap-1.5 rounded-full border border-foreground/10 bg-white px-3 py-1 text-xs font-semibold text-foreground shadow-sm transition hover:bg-muted disabled:opacity-50 dark:bg-white/10"
+        >
+          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
       </div>
-      {state.liveClasses.length > 5 ? <SeeMoreButton expanded={showAllLiveClasses} remaining={state.liveClasses.length - 5} onClick={() => setShowAllLiveClasses((current) => !current)} /> : null}
+
+      {loading && liveClasses.length === 0 ? (
+        <div className="grid h-32 place-content-center text-sm text-muted-foreground">
+          <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin opacity-40" />
+          Fetching live classes...
+        </div>
+      ) : courseGroups.length === 0 ? (
+        <div className="rounded-[1.4rem] border border-dashed border-foreground/15 bg-background/60 p-8 text-center text-sm text-muted-foreground dark:border-white/10">
+          <CalendarClock className="mx-auto mb-3 h-8 w-8 opacity-30" />
+          <p className="font-semibold text-foreground">No live classes scheduled yet.</p>
+          <p className="mt-1">Your teacher will add live sessions to your enrolled courses.</p>
+        </div>
+      ) : (
+        <div className="grid gap-6">
+          {courseGroups.map((group, groupIndex) => (
+            <div key={group.courseId}>
+              <div className="mb-3 flex items-center gap-2">
+                <div className={`h-2.5 w-2.5 rounded-full bg-gradient-to-br ${learnerAccentBars[groupIndex % learnerAccentBars.length]}`} />
+                <p className="text-sm font-bold uppercase tracking-[0.18em] text-foreground">{group.courseTitle}</p>
+                <span className="rounded-full border border-foreground/10 bg-background/70 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                  {group.classes.length} {group.classes.length === 1 ? "session" : "sessions"}
+                </span>
+              </div>
+
+              <div className="grid gap-3">
+                {group.classes.map((liveClass) => {
+                  const link = meetingLink(liveClass);
+                  const joinable = canJoinNow(liveClass);
+                  const isLive = liveClass.status === "live";
+                  const statusClass = statusColors[liveClass.status] ?? statusColors.scheduled;
+
+                  return (
+                    <div
+                      key={liveClass.id}
+                      className={`relative overflow-hidden rounded-[1.4rem] border p-5 shadow-soft dark:bg-[#13212a] ${
+                        isLive
+                          ? "border-green-200 bg-[linear-gradient(135deg,rgba(22,163,74,0.06),rgba(255,255,255,0.99))] dark:border-green-900/30"
+                          : "border-foreground/10 bg-white"
+                      }`}
+                    >
+                      {isLive && <div className="absolute inset-x-0 top-0 h-1 animate-pulse bg-gradient-to-r from-green-400 via-emerald-500 to-green-400" />}
+
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-serif text-xl font-semibold text-foreground">{liveClass.title}</p>
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${statusClass}`}>
+                              {isLive && <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current" />}
+                              {liveClass.status}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {new Date(liveClass.startAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+                            {liveClass.endAt ? ` – ${new Date(liveClass.endAt).toLocaleTimeString("en-US", { timeStyle: "short" })}` : ""}
+                            {" · "}<span className="font-medium">{liveClass.provider ?? "Jitsi"}</span>
+                            {liveClass.durationMinutes ? ` · ${liveClass.durationMinutes} min` : ""}
+                          </p>
+                          {liveClass.description ? <p className="mt-2 text-sm text-muted-foreground">{liveClass.description}</p> : null}
+                        </div>
+                      </div>
+
+                      {/* Always-visible meeting link */}
+                      {link ? (
+                        <div className="mt-4 rounded-[1rem] border border-foreground/10 bg-background/70 p-3 dark:border-white/8 dark:bg-white/5">
+                          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Meeting Link</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <a href={link} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-sm font-medium text-primary underline underline-offset-2 hover:opacity-80">
+                              {link}
+                            </a>
+                            <button type="button" onClick={() => navigator.clipboard.writeText(link)} className="shrink-0 rounded-full border border-foreground/10 bg-white px-3 py-1 text-xs font-semibold text-foreground shadow-sm transition hover:bg-muted dark:bg-white/10">
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-4 rounded-[1rem] border border-dashed border-foreground/10 bg-background/40 p-3 text-xs text-muted-foreground dark:border-white/8">
+                          Meeting link will be shared by the teacher before the session.
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {link && (
+                          <PrimaryButton onClick={() => window.open(link, "_blank", "noopener,noreferrer")} disabled={liveClass.status === "cancelled"}>
+                            {isLive || joinable ? "Join Now" : liveClass.status === "cancelled" ? "Cancelled" : "Open Link"}
+                          </PrimaryButton>
+                        )}
+                        {liveClass.recordingUrl ? (
+                          <SecondaryButton onClick={() => window.open(liveClass.recordingUrl ?? undefined, "_blank", "noopener,noreferrer")}>
+                            Watch Recording
+                          </SecondaryButton>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+export function StudentFeedbackPanel() {
+  type Submission = {
+    id: string;
+    assessmentId: string;
+    assessmentTitle: string | null;
+    assessmentType: string | null;
+    courseId: string | null;
+    courseTitle: string | null;
+    answerText: string;
+    status: string | null;
+    score: number;
+    passingMark: number;
+    feedback: string | null;
+    aiFeedback: string | null;
+    teacherFeedback: string | null;
+    passed: boolean;
+    submittedAt: string | null;
+  };
+
+  const { state } = useMockLms();
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filterCourse, setFilterCourse] = useState<string>("all");
+
+  const load = useCallback(async () => {
+    const token = getStoredToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchMySubmissionsFromBackend();
+      setSubmissions(data as Submission[]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load feedback.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const courses = Array.from(
+    new Map(submissions.filter((s) => s.courseId).map((s) => [s.courseId, s.courseTitle])).entries()
+  );
+
+  const filtered = filterCourse === "all" ? submissions : submissions.filter((s) => s.courseId === filterCourse);
+
+  return (
+    <Section
+      title="My Feedback & Marks"
+      subtitle="Teacher marks, AI feedback, and grading results for your submitted assessments — pulled live from the database."
+    >
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        {/* Course filter */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setFilterCourse("all")}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+              filterCourse === "all" ? "border-foreground/20 bg-foreground text-background" : "border-foreground/10 bg-white/80 text-foreground hover:bg-muted dark:bg-white/10"
+            }`}
+          >
+            All courses
+          </button>
+          {courses.map(([id, title]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setFilterCourse(id!)}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                filterCourse === id ? "border-foreground/20 bg-foreground text-background" : "border-foreground/10 bg-white/80 text-foreground hover:bg-muted dark:bg-white/10"
+              }`}
+            >
+              {title ?? "Course"}
+            </button>
+          ))}
+        </div>
+        <button type="button" onClick={() => { setLoading(true); void load(); }} disabled={loading} className="flex items-center gap-1.5 rounded-full border border-foreground/10 bg-white px-3 py-1 text-xs font-semibold text-foreground shadow-sm transition hover:bg-muted disabled:opacity-50 dark:bg-white/10">
+          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
+      </div>
+
+      {error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/30 dark:bg-red-950/20 dark:text-red-400">{error}</div>
+      ) : loading ? (
+        <div className="grid h-32 place-content-center text-sm text-muted-foreground">
+          <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin opacity-40" />Loading feedback...
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-[1.4rem] border border-dashed border-foreground/15 bg-background/60 p-8 text-center text-sm text-muted-foreground dark:border-white/10">
+          <MessageSquare className="mx-auto mb-3 h-8 w-8 opacity-30" />
+          <p className="font-semibold text-foreground">No submissions yet.</p>
+          <p className="mt-1">Submit an assessment to see your feedback and marks here.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {filtered.map((sub, index) => {
+            const scoreColor = sub.passed
+              ? "border-green-200 bg-[linear-gradient(135deg,rgba(22,163,74,0.06),rgba(255,255,255,0.99))] dark:border-green-900/30"
+              : "border-amber-200 bg-[linear-gradient(135deg,rgba(245,158,11,0.07),rgba(255,255,255,0.99))] dark:border-amber-900/30";
+
+            return (
+              <div key={sub.id} className={`workspace-reveal ${index < 3 ? `workspace-delay-${index + 1}` : ""} rounded-[1.4rem] border p-5 shadow-soft dark:bg-[#13212a] ${scoreColor}`}>
+                {/* Header */}
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-serif text-lg font-semibold text-foreground">{sub.assessmentTitle ?? "Assessment"}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {sub.courseTitle ?? "Course"} · {sub.assessmentType} ·{" "}
+                      {sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString("en-US", { dateStyle: "medium" }) : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-bold ${
+                      sub.passed
+                        ? "border-green-200 bg-green-50 text-green-800 dark:border-green-900/30 dark:bg-green-950/30 dark:text-green-400"
+                        : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/30 dark:bg-amber-950/30 dark:text-amber-400"
+                    }`}>
+                      {sub.passed ? <CheckCircle className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                      {sub.score}%
+                    </div>
+                    <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase ${
+                      sub.passed
+                        ? "border-green-200 bg-green-50 text-green-800"
+                        : "border-amber-200 bg-amber-50 text-amber-800"
+                    }`}>
+                      {sub.passed ? "Passed" : "Needs work"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Score bar */}
+                <div className="mt-3">
+                  <div className="flex justify-between text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    <span>Score</span>
+                    <span>{sub.score}% / {sub.passingMark}% to pass</span>
+                  </div>
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-foreground/10">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${
+                        sub.passed ? "bg-gradient-to-r from-green-400 to-emerald-500" : "bg-gradient-to-r from-amber-400 to-orange-400"
+                      }`}
+                      style={{ width: `${Math.max(4, sub.score)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Status badge */}
+                {sub.status && (
+                  <div className="mt-3">
+                    <span className="rounded-full border border-foreground/10 bg-background/80 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                      {sub.status.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                )}
+
+                {/* Teacher feedback — highlighted */}
+                {sub.teacherFeedback && (
+                  <div className="mt-4 rounded-[1rem] border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/30 dark:bg-blue-950/20">
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Teacher Feedback</p>
+                    <p className="text-sm leading-6 text-foreground">{sub.teacherFeedback}</p>
+                  </div>
+                )}
+
+                {/* AI / auto feedback */}
+                {(sub.aiFeedback || sub.feedback) && (
+                  <div className="mt-3 rounded-[1rem] border border-foreground/10 bg-background/70 p-3 dark:border-white/8 dark:bg-white/5">
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Auto Feedback</p>
+                    <p className="text-sm leading-6 text-muted-foreground">{sub.aiFeedback ?? sub.feedback}</p>
+                  </div>
+                )}
+
+                {/* Answer excerpt (collapsed) */}
+                {sub.answerText && (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-xs font-semibold text-muted-foreground hover:text-foreground">View submitted answer</summary>
+                    <div className="mt-2 rounded-[0.9rem] bg-background/60 px-3 py-2 text-xs leading-6 text-muted-foreground dark:bg-white/5">{sub.answerText}</div>
+                  </details>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </Section>
   );
 }
@@ -462,7 +824,14 @@ export function StudentDashboardPanel() {
     <div className="grid gap-6">
       <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         {[
-          { label: "Active courses", value: String(state.courses.filter((course) => course.status === "published").length), icon: <BookOpen className="h-5 w-5" /> },
+          { 
+            label: "My courses", 
+            value: String(state.enrollments.filter(e => 
+              e.status === "active" && 
+              (e.studentId === currentUser?.id || e.studentName === studentName)
+            ).length), 
+            icon: <BookOpen className="h-5 w-5" /> 
+          },
           { label: "Assessments taken", value: String(state.submissions.filter((submission) => submission.studentName === studentName).length), icon: <FileText className="h-5 w-5" /> },
           { label: "Upcoming live classes", value: String(state.liveClasses.filter((item) => item.status === "scheduled").length), icon: <CalendarClock className="h-5 w-5" /> },
           { label: "Certificates", value: String(state.certificates.filter((certificate) => certificate.studentName === studentName).length), icon: <Award className="h-5 w-5" /> }

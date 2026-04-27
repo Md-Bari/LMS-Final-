@@ -418,7 +418,8 @@ function GenericMarketing({ slug }: { slug: string }) {
 }
 
 export function HomeExperience() {
-  const { state, currentUser, isAuthenticated, resetDemo } = useMockLms();
+  const { state, currentUser, isAuthenticated, resetDemo, signOut } = useMockLms();
+  const router = useRouter();
   const { mounted, theme, toggleTheme } = useThemeMode();
   const [homeCourses, setHomeCourses] = useState(state.courses);
   const [publicLoadFailed, setPublicLoadFailed] = useState(false);
@@ -550,12 +551,29 @@ export function HomeExperience() {
         </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-medium text-foreground transition hover:text-foreground/75">
-              Log In
-            </Link>
-            <Link href={primaryWorkspaceHref} className="rounded-lg border border-foreground/30 px-4 py-2 text-sm font-bold text-foreground transition hover:bg-foreground hover:text-background">
-              {isAuthenticated ? "Open Dashboard" : "Join for Free"}
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void signOut().then(() => router.replace("/login"))}
+                  className="text-sm font-medium text-foreground transition hover:text-foreground/75"
+                >
+                  Sign Out
+                </button>
+                <Link href={primaryWorkspaceHref} className="rounded-lg border border-foreground/30 px-4 py-2 text-sm font-bold text-foreground transition hover:bg-foreground hover:text-background">
+                  Open Dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="text-sm font-medium text-foreground transition hover:text-foreground/75">
+                  Log In
+                </Link>
+                <Link href={primaryWorkspaceHref} className="rounded-lg border border-foreground/30 px-4 py-2 text-sm font-bold text-foreground transition hover:bg-foreground hover:text-background">
+                  Join for Free
+                </Link>
+              </>
+            )}
             <button
               type="button"
               onClick={toggleTheme}
@@ -1088,7 +1106,7 @@ export function CatalogCourseExperience({ slug }: { slug: string }) {
       (enrollment.studentId === currentUser?.id || enrollment.studentName === currentUser?.name)
     )
     : null;
-  const isEnrolled = Boolean(myEnrollment);
+  const isEnrolled = Boolean(myEnrollment) || Boolean(currentUser && (currentUser.role === "teacher" || currentUser.role === "admin"));
   const enrollmentProgress = myEnrollment?.progressPercentage ?? 0;
   const isWishlisted = course
     ? state.wishlists.some((wishlist) =>
@@ -1401,9 +1419,7 @@ export function CatalogCourseExperience({ slug }: { slug: string }) {
                   const videoId = hasVideo ? (lesson.contentUrl!.match(/[?&]v=([a-zA-Z0-9_-]{11})/)?.[1] ?? lesson.contentUrl!.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)?.[1]) : null;
                   const thumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
                   const lessonKey = `${module.id}:${lesson.id}`;
-                  const releaseAt = Date.parse(lesson.releaseAt);
-                  const releaseLocked = Number.isFinite(releaseAt) ? releaseAt > Date.now() : module.dripDays > 0;
-                  const locked = !isEnrolled || releaseLocked;
+                  const locked = !isEnrolled;
                   const completed = lesson.isCompleted || lesson.completedBy.includes(currentUser?.name ?? "");
                   const current = currentLessonKey === lessonKey;
                   const typeIcon = lesson.type === "video"
@@ -1429,7 +1445,13 @@ export function CatalogCourseExperience({ slug }: { slug: string }) {
                       type="button"
                       onClick={() => {
                         if (locked) return;
-                        if (hasVideo) setActiveVideo({ url: lesson.contentUrl!, title: lesson.title });
+                        if (hasVideo) {
+                          setActiveVideo({ url: lesson.contentUrl!, title: lesson.title });
+                        } else if (lesson.type === "quiz" || lesson.type === "assignment") {
+                          router.push("/student");
+                        } else if (lesson.contentUrl) {
+                          window.open(lesson.contentUrl, "_blank", "noopener,noreferrer");
+                        }
                       }}
                       className={`flex items-center gap-3 rounded-[1.2rem] border p-3 text-sm text-left transition-all ${locked ? "cursor-not-allowed border-foreground/10 bg-background/60 opacity-80" : hasVideo ? "cursor-pointer border-foreground/10 bg-background/70 hover:border-red-300 hover:shadow-sm" : "cursor-default border-foreground/10 bg-background/70"} ${current ? "ring-1 ring-[#E8A020]/40" : ""}`}
                     >

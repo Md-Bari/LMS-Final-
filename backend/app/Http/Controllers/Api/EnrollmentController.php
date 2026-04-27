@@ -14,8 +14,94 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 
+use App\Models\Submission;
+
 class EnrollmentController extends Controller
 {
+    public function myCourses(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $enrollments = Enrollment::query()
+            ->where(['tenant_id' => $user->tenant_id])
+            ->where(['student_id' => $user->id])
+            ->whereIn('status', ['active', 'completed'])
+            ->with(['course.modules.lessons.completedUsers:id,name', 'course.teacher:id,name,email,department,city,profile_image_url,bio,rating_average,rating_count'])
+            ->latest('enrolled_at')
+            ->get();
+
+        $courses = $enrollments->map(function (Enrollment $enrollment) use ($user) {
+            if (!$enrollment->course) return null;
+            $courseData = LmsSupport::serializeCourse($enrollment->course, $user);
+            $courseData['enrollmentStatus'] = $enrollment->status;
+            $courseData['progressPercentage'] = $enrollment->progress_percentage;
+            $courseData['enrolledAt'] = optional($enrollment->enrolled_at)->toIso8601String();
+            return $courseData;
+        })->filter()->values();
+
+        $assessments = \App\Models\Assessment::query()
+            ->whereIn('course_id', $enrollments->pluck('course_id'))
+            ->where(['status' => 'published'])
+            ->with('questions')
+            ->get()
+            ->map(fn (\App\Models\Assessment $a) => LmsSupport::serializeAssessment($a));
+
+        return response()->json([
+            'data' => $courses->all(),
+            'assessments' => $assessments->all(),
+        ]);
+    }
+
+    public function mySubmissions(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        // Only enrolled course IDs for this student
+        $enrolledCourseIds = Enrollment::query()
+            ->where('tenant_id', $user->tenant_id)
+            ->where('student_id', $user->id)
+            ->whereIn('status', ['active', 'completed'])
+            ->pluck('course_id');
+
+        $submissions = Submission::query()
+            ->where('user_id', $user->id)
+            ->whereHas('assessment', fn ($q) => $q->whereIn('course_id', $enrolledCourseIds))
+            ->with([
+                'assessment:id,title,type,status,course_id,passing_mark',
+                'assessment.course:id,title,tenant_id',
+            ])
+            ->latest('submitted_at')
+            ->get();
+
+        $data = $submissions->map(function (Submission $submission) {
+            $assessment = $submission->assessment;
+            $course = $assessment?->course;
+
+            return [
+                'id'              => $submission->id,
+                'assessmentId'    => $submission->assessment_id,
+                'assessmentTitle' => $assessment?->title,
+                'assessmentType'  => $assessment?->type,
+                'courseId'        => $course?->id ? (string) $course->id : null,
+                'courseTitle'     => $course?->title,
+                'answerText'      => $submission->answer_text,
+                'status'          => $submission->status,
+                'score'           => $submission->score,
+                'passingMark'     => $assessment?->passing_mark ?? 70,
+                'feedback'        => $submission->feedback,
+                'aiFeedback'      => $submission->ai_feedback,
+                'teacherFeedback' => $submission->teacher_feedback,
+                'passed'          => $submission->passed,
+                'submittedAt'     => optional($submission->submitted_at)->toIso8601String(),
+            ];
+        });
+
+        return response()->json(['data' => $data->all()]);
+    }
+
+
     public function index(Request $request): JsonResponse
     {
         /** @var User $user */
