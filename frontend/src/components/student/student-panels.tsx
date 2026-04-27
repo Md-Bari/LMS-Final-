@@ -23,24 +23,24 @@ import {
 } from "@/components/shared/lms-core";
 
 const learnerMetricCardStyles = [
-  "border-[#0f766e]/18 bg-[linear-gradient(180deg,rgba(15,118,110,0.08),rgba(255,255,255,0.96))]",
-  "border-[#1d4ed8]/18 bg-[linear-gradient(180deg,rgba(29,78,216,0.08),rgba(255,255,255,0.96))]",
-  "border-[#f59e0b]/18 bg-[linear-gradient(180deg,rgba(245,158,11,0.09),rgba(255,255,255,0.96))]",
-  "border-[#dc2626]/18 bg-[linear-gradient(180deg,rgba(220,38,38,0.07),rgba(255,255,255,0.96))]"
+  "border-[#0f766e]/18 bg-[linear-gradient(180deg,rgba(15,118,110,0.06),rgba(255,255,255,0.92))] dark:bg-white/[0.03]",
+  "border-[#1d4ed8]/18 bg-[linear-gradient(180deg,rgba(29,78,216,0.06),rgba(255,255,255,0.92))] dark:bg-white/[0.03]",
+  "border-[#f59e0b]/18 bg-[linear-gradient(180deg,rgba(245,158,11,0.07),rgba(255,255,255,0.92))] dark:bg-white/[0.03]",
+  "border-[#dc2626]/18 bg-[linear-gradient(180deg,rgba(220,38,38,0.05),rgba(255,255,255,0.92))] dark:bg-white/[0.03]"
 ] as const;
 
 const learnerCourseCardStyles = [
-  "border-[#0f766e]/16 bg-[linear-gradient(135deg,rgba(15,118,110,0.06),rgba(255,255,255,0.98)_34%)]",
-  "border-[#1d4ed8]/16 bg-[linear-gradient(135deg,rgba(29,78,216,0.06),rgba(255,255,255,0.98)_34%)]",
-  "border-[#f59e0b]/16 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(255,255,255,0.98)_34%)]",
-  "border-[#dc2626]/14 bg-[linear-gradient(135deg,rgba(220,38,38,0.05),rgba(255,255,255,0.98)_34%)]"
+  "border-[#0f766e]/16 bg-[linear-gradient(135deg,rgba(15,118,110,0.04),rgba(255,255,255,0.94)_34%)] dark:bg-white/[0.02]",
+  "border-[#1d4ed8]/16 bg-[linear-gradient(135deg,rgba(29,78,216,0.04),rgba(255,255,255,0.94)_34%)] dark:bg-white/[0.02]",
+  "border-[#f59e0b]/16 bg-[linear-gradient(135deg,rgba(245,158,11,0.05),rgba(255,255,255,0.94)_34%)] dark:bg-white/[0.02]",
+  "border-[#dc2626]/14 bg-[linear-gradient(135deg,rgba(220,38,38,0.04),rgba(255,255,255,0.94)_34%)] dark:bg-white/[0.02]"
 ] as const;
 
 const learnerModuleCardStyles = [
-  "border-[#0f766e]/14 bg-[linear-gradient(180deg,rgba(15,118,110,0.05),rgba(255,255,255,0.98))]",
-  "border-[#1d4ed8]/14 bg-[linear-gradient(180deg,rgba(29,78,216,0.05),rgba(255,255,255,0.98))]",
-  "border-[#f59e0b]/14 bg-[linear-gradient(180deg,rgba(245,158,11,0.06),rgba(255,255,255,0.98))]",
-  "border-[#dc2626]/12 bg-[linear-gradient(180deg,rgba(220,38,38,0.04),rgba(255,255,255,0.98))]"
+  "border-[#0f766e]/14 bg-[linear-gradient(180deg,rgba(15,118,110,0.04),rgba(255,255,255,0.94))] dark:bg-white/[0.02]",
+  "border-[#1d4ed8]/14 bg-[linear-gradient(180deg,rgba(29,78,216,0.04),rgba(255,255,255,0.94))] dark:bg-white/[0.02]",
+  "border-[#f59e0b]/14 bg-[linear-gradient(180deg,rgba(245,158,11,0.05),rgba(255,255,255,0.94))] dark:bg-white/[0.02]",
+  "border-[#dc2626]/12 bg-[linear-gradient(180deg,rgba(220,38,38,0.04),rgba(255,255,255,0.94))] dark:bg-white/[0.02]"
 ] as const;
 
 const learnerAccentBars = [

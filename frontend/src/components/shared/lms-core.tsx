@@ -455,10 +455,10 @@ export function Section({
 }) {
   return (
     <section
-      className={`min-w-0 overflow-hidden rounded-[24px] border p-6 shadow-soft ${
+      className={`min-w-0 overflow-hidden rounded-[24px] border p-6 shadow-soft transition-all duration-300 ${
         accent
-          ? "border-[#E8A020]/25 bg-[linear-gradient(150deg,#17304d_0%,#1f3d5e_58%,#c88b2c_100%)] text-white shadow-glow dark:border-[#E8A020]/25 dark:bg-[#151526]"
-          : "border-border/70 bg-card/80 backdrop-blur dark:border-white/8 dark:bg-white/5"
+          ? "border-[#E8A020]/25 bg-[linear-gradient(150deg,#17304d_0%,#1f3d5e_58%,#c88b2c_100%)] text-white shadow-glow dark:border-[#E8A020]/20 dark:bg-[linear-gradient(150deg,#0a1a2f_0%,#11243d_60%,#8b5e1a_100%)]"
+          : "border-border/70 bg-card/80 backdrop-blur-[12px] dark:border-white/10 dark:bg-white/[0.03]"
       }`}
     >
       <div className="flex flex-col gap-2">
@@ -588,17 +588,17 @@ export function WorkspaceHero({
   return (
     <section className={`${pageFrame} pb-7 pt-10 md:pb-8`}>
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
-        <div className="workspace-reveal relative overflow-hidden rounded-[30px] border border-white/40 bg-[linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,248,234,0.72)_42%,rgba(242,248,247,0.86))] px-7 py-8 shadow-[0_28px_60px_-40px_rgba(24,40,72,0.42)] backdrop-blur dark:border-white/8 dark:bg-white/5">
-          <div className="pointer-events-none absolute inset-y-0 right-[6%] w-36 rounded-full bg-[radial-gradient(circle,rgba(232,160,32,0.16),transparent_68%)] blur-2xl" />
-          <div className="pointer-events-none absolute -left-8 top-6 h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(29,78,216,0.09),transparent_70%)] blur-2xl" />
-          <p className="inline-flex rounded-full border border-foreground/10 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-muted-foreground shadow-soft dark:border-white/8 dark:bg-white/5">
+        <div className="workspace-reveal relative overflow-hidden rounded-[30px] border border-white/40 bg-[linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,248,234,0.72)_42%,rgba(242,248,247,0.86))] px-7 py-8 shadow-[0_28px_60px_-40px_rgba(24,40,72,0.42)] backdrop-blur-[16px] dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))]">
+          <div className="pointer-events-none absolute inset-y-0 right-[6%] w-36 rounded-full bg-[radial-gradient(circle,rgba(232,160,32,0.12),transparent_68%)] blur-2xl" />
+          <div className="pointer-events-none absolute -left-8 top-6 h-24 w-24 rounded-full bg-[radial-gradient(circle,rgba(29,78,216,0.08),transparent_70%)] blur-2xl" />
+          <p className="inline-flex rounded-full border border-foreground/10 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-muted-foreground shadow-soft dark:border-white/10 dark:bg-white/5">
             {eyebrow}
           </p>
-          <h1 className="mt-6 max-w-4xl font-serif text-5xl leading-[0.96] text-balance md:text-6xl">{title}</h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">{description}</p>
+          <h1 className="mt-6 max-w-4xl font-serif text-5xl leading-[0.96] text-balance md:text-6xl dark:text-white/95">{title}</h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground dark:text-white/60">{description}</p>
         </div>
-        <div className="workspace-reveal workspace-delay-1 ambient-float soft-shimmer rounded-[28px] border border-foreground/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(255,248,240,0.72))] p-5 shadow-[0_30px_60px_-42px_rgba(31,41,55,0.45)] lg:mt-8 lg:max-w-[25rem] lg:justify-self-end dark:border-white/8 dark:bg-white/5">
-          <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Working frontend flows</p>
+        <div className="workspace-reveal workspace-delay-1 ambient-float soft-shimmer rounded-[28px] border border-foreground/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(255,248,240,0.72))] p-5 shadow-[0_30px_60px_-42px_rgba(31,41,55,0.45)] lg:mt-8 lg:max-w-[25rem] lg:justify-self-end dark:border-white/10 dark:bg-white/[0.02]">
+          <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground dark:text-white/50">Working frontend flows</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Badge>Multi-tenant branding</Badge>
             <Badge>AI assessments</Badge>
