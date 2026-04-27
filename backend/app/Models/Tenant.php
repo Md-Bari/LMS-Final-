@@ -76,4 +76,9 @@ class Tenant extends Model
     {
         return $this->hasMany(Invoice::class);
     }
+
+    public function wishlists(): HasMany
+    {
+        return $this->hasMany(Wishlist::class);
+    }
 }

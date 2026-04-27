@@ -4,11 +4,13 @@ import type {
   Assessment,
   Course,
   FallbackQuestionBankItem,
+  Lesson,
   LiveClass,
   MockLmsState,
   TenantBranding,
   UserProfile,
-  VendorSummary
+  VendorSummary,
+  Wishlist
 } from "@/lib/mock-lms";
 
 const API_BASE_URL =
@@ -42,6 +44,18 @@ type UploadNoteResult = {
   preview: string;
   extractedText?: string;
   extractionMethod?: string;
+};
+
+type BackendSubmission = {
+  id: string;
+  assessmentId: string;
+  studentName: string;
+  answerText: string;
+  status?: string;
+  score: number;
+  feedback: string;
+  passed: boolean;
+  submittedAt?: string;
 };
 
 type BackendAuthResponse = {
@@ -85,7 +99,11 @@ function normalizeUser(user: Record<string, unknown>): UserProfile {
     name: String(user.name ?? ""),
     role: normalizeRole(user.role),
     email: String(user.email ?? ""),
-    department: user.department ? String(user.department) : undefined
+    department: user.department ? String(user.department) : undefined,
+    profileImageUrl: user.profileImageUrl ? String(user.profileImageUrl) : null,
+    bio: user.bio ? String(user.bio) : null,
+    ratingAverage: user.ratingAverage !== undefined && user.ratingAverage !== null ? Number(user.ratingAverage) : null,
+    ratingCount: Number(user.ratingCount ?? 0)
   };
 }
 
@@ -101,6 +119,28 @@ function normalizeCourse(course: Record<string, unknown>): Course {
     status: (course.status as Course["status"]) ?? "draft",
     price: Number(course.price ?? 0),
     enrollmentCount: Number(course.enrollmentCount ?? 0),
+    whatYouWillLearn: Array.isArray(course.whatYouWillLearn) ? (course.whatYouWillLearn as string[]) : [],
+    requirements: Array.isArray(course.requirements) ? (course.requirements as string[]) : [],
+    targetAudience: Array.isArray(course.targetAudience) ? (course.targetAudience as string[]) : [],
+    instructor: course.instructor && typeof course.instructor === "object"
+      ? {
+          id: String((course.instructor as Record<string, unknown>).id ?? ""),
+          name: String((course.instructor as Record<string, unknown>).name ?? ""),
+          profileImageUrl: (course.instructor as Record<string, unknown>).profileImageUrl
+            ? String((course.instructor as Record<string, unknown>).profileImageUrl)
+            : null,
+          bio: (course.instructor as Record<string, unknown>).bio
+            ? String((course.instructor as Record<string, unknown>).bio)
+            : null,
+          ratingAverage:
+            (course.instructor as Record<string, unknown>).ratingAverage !== undefined &&
+            (course.instructor as Record<string, unknown>).ratingAverage !== null
+              ? Number((course.instructor as Record<string, unknown>).ratingAverage)
+              : null,
+          ratingCount: Number((course.instructor as Record<string, unknown>).ratingCount ?? 0),
+          studentsCount: Number((course.instructor as Record<string, unknown>).studentsCount ?? 0)
+        }
+      : null,
     modules: Array.isArray(course.modules)
       ? course.modules.map((module) => ({
           id: String((module as Record<string, unknown>).id),
@@ -125,6 +165,21 @@ function normalizeCourse(course: Record<string, unknown>): Course {
   };
 }
 
+function normalizeLesson(lesson: Record<string, unknown>): Lesson {
+  return {
+    id: String(lesson.id),
+    title: String(lesson.title ?? ""),
+    type: (lesson.type as Lesson["type"]) ?? "video",
+    contentUrl: lesson.contentUrl ? String(lesson.contentUrl) : null,
+    contentMime: lesson.contentMime ? String(lesson.contentMime) : null,
+    contentOriginalName: lesson.contentOriginalName ? String(lesson.contentOriginalName) : null,
+    durationMinutes: Number(lesson.durationMinutes ?? 0),
+    releaseAt: String(lesson.releaseAt ?? ""),
+    completedBy: Array.isArray(lesson.completedBy) ? (lesson.completedBy as string[]) : [],
+    isCompleted: Boolean(lesson.isCompleted)
+  };
+}
+
 function normalizeAssessment(assessment: Record<string, unknown>): Assessment {
   return {
     id: String(assessment.id),
@@ -146,6 +201,20 @@ function normalizeAssessment(assessment: Record<string, unknown>): Assessment {
       : [],
     rubricKeywords: Array.isArray(assessment.rubricKeywords) ? (assessment.rubricKeywords as string[]) : [],
     teacherReviewed: Boolean(assessment.teacherReviewed)
+  };
+}
+
+function normalizeSubmission(submission: Record<string, unknown>): BackendSubmission {
+  return {
+    id: String(submission.id ?? ""),
+    assessmentId: String(submission.assessmentId ?? ""),
+    studentName: String(submission.studentName ?? ""),
+    answerText: String(submission.answerText ?? ""),
+    status: submission.status ? String(submission.status) : undefined,
+    score: Number(submission.score ?? 0),
+    feedback: String(submission.feedback ?? ""),
+    passed: Boolean(submission.passed),
+    submittedAt: submission.submittedAt ? String(submission.submittedAt) : undefined
   };
 }
 
@@ -252,6 +321,7 @@ function normalizeState(state: Partial<MockLmsState> | null | undefined): Partia
     users: Array.isArray(state.users) ? state.users.map((user) => normalizeUser(user as unknown as Record<string, unknown>)) : [],
     courses: Array.isArray(state.courses) ? state.courses.map((course) => normalizeCourse(course as unknown as Record<string, unknown>)) : [],
     enrollments: Array.isArray(state.enrollments) ? (state.enrollments as MockLmsState["enrollments"]) : [],
+    wishlists: Array.isArray(state.wishlists) ? (state.wishlists as MockLmsState["wishlists"]) : [],
     assessments: Array.isArray(state.assessments)
       ? state.assessments.map((assessment) => normalizeAssessment(assessment as unknown as Record<string, unknown>))
       : [],
@@ -584,7 +654,7 @@ export async function fetchPublicCoursesFromBackend(search?: string) {
     params.set("search", normalizedSearch);
   }
 
-  params.set("per_page", "12");
+  params.set("per_page", "100");
 
   const query = params.toString();
   let response: Response;
@@ -631,6 +701,7 @@ export async function addCourseLessonOnBackend(
     title: string;
     type: "video" | "document" | "quiz" | "assignment" | "live";
     durationMinutes: number;
+    releaseAt?: string;
   }
 ) {
   const response = await apiFetch(`/api/v1/courses/${courseId}/modules/${moduleId}/lessons`, {
@@ -638,11 +709,13 @@ export async function addCourseLessonOnBackend(
     body: JSON.stringify({
       title: payload.title,
       type: payload.type,
-      duration_minutes: payload.durationMinutes
+      duration_minutes: payload.durationMinutes,
+      release_at: payload.releaseAt
     })
   });
 
-  return unwrapResponse<{ data: unknown }>(response);
+  const data = await unwrapResponse<{ data: unknown }>(response);
+  return normalizeLesson(data.data as Record<string, unknown>);
 }
 
 export async function uploadLessonContentOnBackend(
@@ -670,6 +743,38 @@ export async function completeLessonOnBackend(courseId: string, lessonId: string
   return unwrapResponse<{ data: unknown }>(response);
 }
 
+export async function createEnrollmentOnBackend(payload: { courseId: string; studentId?: string }) {
+  const response = await apiFetch("/api/v1/enrollments", {
+    method: "POST",
+    body: JSON.stringify({
+      course_id: Number(payload.courseId),
+      student_id: payload.studentId ? Number(payload.studentId) : undefined
+    })
+  });
+
+  return unwrapResponse<{ data: unknown }>(response);
+}
+
+export async function addToWishlistOnBackend(courseId: string): Promise<Wishlist> {
+  const response = await apiFetch("/api/v1/wishlists", {
+    method: "POST",
+    body: JSON.stringify({
+      course_id: Number(courseId)
+    })
+  });
+
+  const payload = await unwrapResponse<{ data: Wishlist }>(response);
+  return payload.data;
+}
+
+export async function removeFromWishlistOnBackend(courseId: string) {
+  const response = await apiFetch(`/api/v1/wishlists/${courseId}`, {
+    method: "DELETE"
+  });
+
+  return unwrapResponse<{ message: string }>(response);
+}
+
 export async function createLiveClassOnBackend(payload: {
   title: string;
   courseId: string;
@@ -678,7 +783,7 @@ export async function createLiveClassOnBackend(payload: {
   date: string;
   startTime: string;
   endTime: string;
-  meetingType?: "jitsi";
+  meetingType?: "jitsi" | "external";
   meetingLink?: string;
   durationMinutes: number;
   status?: "scheduled" | "live" | "completed" | "cancelled";
@@ -723,7 +828,12 @@ export async function submitAssessmentOnBackend(assessmentId: string, answerText
     })
   });
 
-  return unwrapResponse<{ data: unknown }>(response);
+  const payload = await unwrapResponse<{ data: { submission: unknown } }>(response);
+  const normalized = normalizeSubmission(payload.data.submission as Record<string, unknown>);
+
+  return {
+    submission: normalized
+  };
 }
 
 export async function issueCertificateOnBackend(userId: string, courseId: string) {

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { X, Play, Maximize2, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { X, Play, ExternalLink } from "lucide-react";
 
 type YouTubePlayerProps = {
   videoUrl: string;

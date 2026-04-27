@@ -16,6 +16,7 @@ import {
   planMatrix,
   seedState,
   type AssessmentType,
+  type Lesson,
   type MockLmsState,
   type PlanTier,
   type Role,
@@ -24,9 +25,11 @@ import {
   uid
 } from "@/lib/mock/lms-data";
 import {
+  addToWishlistOnBackend,
   addCourseLessonOnBackend,
   addCourseModuleOnBackend,
   completeLessonOnBackend,
+  createEnrollmentOnBackend,
   createCourseOnBackend,
   createLiveClassOnBackend,
   fetchAuthenticatedBootstrap,
@@ -36,6 +39,7 @@ import {
   publishTeacherAssessment,
   publishCourseOnBackend,
   revokeCertificateOnBackend,
+  removeFromWishlistOnBackend,
   registerToBackend,
   sendComplianceRemindersOnBackend,
   signInToBackend,
@@ -76,10 +80,17 @@ type ScheduleLiveClassPayload = {
   date?: string;
   startTime?: string;
   endTime?: string;
-  meetingType?: "jitsi";
+  meetingType?: "jitsi" | "external";
   meetingLink?: string;
   durationMinutes: number;
   status?: "scheduled" | "live" | "completed" | "cancelled";
+};
+
+type AssessmentSubmissionResult = {
+  score: number;
+  passed: boolean;
+  feedback: string;
+  status?: string;
 };
 
 type MockLmsContextType = {
@@ -94,17 +105,21 @@ type MockLmsContextType = {
   updateBranding: (branding: TenantBranding) => Promise<void>;
   createCourse: (payload: CreateCoursePayload) => Promise<void>;
   publishCourse: (courseId: string) => Promise<void>;
+  setCourseAssessmentGate: (courseId: string, enabled: boolean) => Promise<void>;
   addModule: (courseId: string, title: string) => Promise<void>;
   addLesson: (
     courseId: string,
     moduleId: string,
-    lesson: { title: string; type: "video" | "document" | "quiz" | "assignment" | "live"; durationMinutes: number }
-  ) => Promise<void>;
+    lesson: { title: string; type: "video" | "document" | "quiz" | "assignment" | "live"; durationMinutes: number; releaseAt?: string }
+  ) => Promise<Lesson | null>;
   uploadLessonContent: (courseId: string, moduleId: string, lessonId: string, file: File) => Promise<void>;
   markLessonComplete: (courseId: string, lessonId: string, studentName?: string) => Promise<void>;
+  enrollInCourse: (courseId: string, studentName?: string) => Promise<void>;
+  addToWishlist: (courseId: string) => Promise<void>;
+  removeFromWishlist: (courseId: string) => Promise<void>;
   createAssessmentDraft: (payload: CreateAssessmentPayload) => Promise<void>;
   publishAssessment: (assessmentId: string) => Promise<void>;
-  submitAssessment: (assessmentId: string, studentName: string, answerText: string) => Promise<void>;
+  submitAssessment: (assessmentId: string, studentName: string, answerText: string) => Promise<AssessmentSubmissionResult | null>;
   scheduleLiveClass: (payload: ScheduleLiveClassPayload) => Promise<void>;
   setLiveClassStatus: (classId: string, status: "scheduled" | "live" | "recorded") => Promise<void>;
   issueCertificate: (studentName: string, courseId: string) => Promise<void>;
@@ -214,6 +229,7 @@ function normalizeState(partial?: Partial<MockLmsState>): MockLmsState {
     users: partial?.users ?? seedState.users,
     courses: partial?.courses ?? seedState.courses,
     enrollments: partial?.enrollments ?? seedState.enrollments,
+    wishlists: partial?.wishlists ?? seedState.wishlists,
     assessments: partial?.assessments ?? seedState.assessments,
     submissions: partial?.submissions ?? seedState.submissions,
     liveClasses: partial?.liveClasses ?? seedState.liveClasses,
@@ -345,8 +361,14 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
     },
     async resetDemo() {
       if (currentUser) {
-        await signOutFromBackend();
+        try {
+          await refreshBackendState();
+        } catch {
+          setState(seedState);
+        }
+        return;
       }
+
       setState(seedState);
       setCurrentUser(null);
     },
@@ -387,6 +409,7 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
             status: "draft",
             price: payload.price,
             enrollmentCount: 0,
+            assessmentGateEnabled: true,
             modules: [
               {
                 id: uid("module"),
@@ -422,6 +445,24 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
         ]
       }));
     },
+    async setCourseAssessmentGate(courseId, enabled) {
+      setState((current) => ({
+        ...current,
+        courses: current.courses.map((course) =>
+          course.id === courseId ? { ...course, assessmentGateEnabled: enabled } : course
+        ),
+        auditEvents: [
+          createAuditEvent(
+            "Teacher",
+            enabled ? "Enabled assessment gate" : "Disabled assessment gate",
+            courseId,
+            current.branding.tenantId,
+            current.branding.vendorId
+          ),
+          ...current.auditEvents
+        ]
+      }));
+    },
     async addModule(courseId, title) {
       if (currentUser) {
         await addCourseModuleOnBackend(courseId, title);
@@ -446,10 +487,19 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
     },
     async addLesson(courseId, moduleId, lesson) {
       if (currentUser) {
-        await addCourseLessonOnBackend(courseId, moduleId, lesson);
+        const createdLesson = await addCourseLessonOnBackend(courseId, moduleId, lesson);
         await refreshBackendState();
-        return;
+        return createdLesson;
       }
+
+      const createdLesson = {
+        id: uid("lesson"),
+        title: lesson.title,
+        type: lesson.type,
+        durationMinutes: lesson.durationMinutes,
+        releaseAt: lesson.releaseAt || new Date().toISOString(),
+        completedBy: []
+      };
 
       setState((current) => ({
         ...current,
@@ -463,14 +513,7 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
                         ...module,
                         lessons: [
                           ...module.lessons,
-                          {
-                            id: uid("lesson"),
-                            title: lesson.title,
-                            type: lesson.type,
-                            durationMinutes: lesson.durationMinutes,
-                            releaseAt: new Date().toISOString(),
-                            completedBy: []
-                          }
+                          createdLesson
                         ]
                       }
                     : module
@@ -479,6 +522,8 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
             : course
         )
       }));
+
+      return createdLesson;
     },
     async uploadLessonContent(courseId, moduleId, lessonId, file) {
       if (currentUser) {
@@ -573,6 +618,141 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
         };
       });
     },
+    async enrollInCourse(courseId, studentName) {
+      if (currentUser) {
+        await createEnrollmentOnBackend({
+          courseId,
+          studentId: currentUser.role === "student" ? currentUser.id : undefined
+        });
+        await refreshBackendState();
+        return;
+      }
+
+      setState((current) => {
+        const course = getCourseById(current.courses, courseId);
+        if (!course) {
+          return current;
+        }
+
+        const actorName = studentName ?? defaultStudentName(current, currentUser);
+        const actorId = current.users.find((user) => user.role === "student" && user.name === actorName)?.id ?? uid("student");
+        const alreadyEnrolled = current.enrollments.some((enrollment) =>
+          enrollment.courseId === courseId &&
+          enrollment.status !== "cancelled" &&
+          (enrollment.studentId === actorId || enrollment.studentName === actorName)
+        );
+
+        if (alreadyEnrolled) {
+          return current;
+        }
+
+        return {
+          ...current,
+          enrollments: [
+            {
+              id: uid("enroll"),
+              tenantId: current.branding.tenantId,
+              vendorId: current.branding.vendorId,
+              courseId,
+              courseTitle: course.title,
+              studentId: actorId,
+              studentName: actorName,
+              status: "active",
+              progressPercentage: 0,
+              enrolledAt: new Date().toISOString(),
+              completedAt: null
+            },
+            ...current.enrollments
+          ],
+          wishlists: current.wishlists.filter((wishlist) =>
+            wishlist.courseId !== courseId ||
+            (wishlist.studentId !== actorId && wishlist.studentName !== actorName)
+          ),
+          courses: current.courses.map((item) =>
+            item.id === courseId
+              ? { ...item, enrollmentCount: item.enrollmentCount + 1 }
+              : item
+          ),
+          notifications: [
+            {
+              id: uid("notice"),
+              tenantId: current.branding.tenantId,
+              vendorId: current.branding.vendorId,
+              audience: "Student",
+              type: "system",
+              message: `${actorName} enrolled in "${course.title}".`,
+              createdAt: new Date().toISOString()
+            },
+            ...current.notifications
+          ],
+          auditEvents: [
+            createAuditEvent("Student", "Enrolled in course", course.title, current.branding.tenantId, current.branding.vendorId),
+            ...current.auditEvents
+          ]
+        };
+      });
+    },
+    async addToWishlist(courseId) {
+      if (currentUser) {
+        await addToWishlistOnBackend(courseId);
+        await refreshBackendState();
+        return;
+      }
+
+      setState((current) => {
+        const course = getCourseById(current.courses, courseId);
+        if (!course) {
+          return current;
+        }
+
+        const actorName = defaultStudentName(current, currentUser);
+        const actorId = current.users.find((user) => user.role === "student" && user.name === actorName)?.id ?? uid("student");
+        const alreadyWishlisted = current.wishlists.some(
+          (wishlist) => wishlist.courseId === courseId && wishlist.studentId === actorId
+        );
+
+        if (alreadyWishlisted) {
+          return current;
+        }
+
+        return {
+          ...current,
+          wishlists: [
+            {
+              id: uid("wishlist"),
+              tenantId: current.branding.tenantId,
+              vendorId: current.branding.vendorId,
+              courseId,
+              courseTitle: course.title,
+              studentId: actorId,
+              studentName: actorName,
+              addedAt: new Date().toISOString()
+            },
+            ...current.wishlists
+          ]
+        };
+      });
+    },
+    async removeFromWishlist(courseId) {
+      if (currentUser) {
+        await removeFromWishlistOnBackend(courseId);
+        await refreshBackendState();
+        return;
+      }
+
+      setState((current) => {
+        const actorName = defaultStudentName(current, currentUser);
+        const actorId = current.users.find((user) => user.role === "student" && user.name === actorName)?.id;
+
+        return {
+          ...current,
+          wishlists: current.wishlists.filter((wishlist) =>
+            wishlist.courseId !== courseId ||
+            (actorId ? wishlist.studentId !== actorId : wishlist.studentName !== actorName)
+          )
+        };
+      });
+    },
     async createAssessmentDraft(payload) {
       if (currentUser) {
         await generateTeacherAssessmentDraft({
@@ -647,10 +827,19 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
     },
     async submitAssessment(assessmentId, studentName, answerText) {
       if (currentUser) {
-        await submitAssessmentOnBackend(assessmentId, answerText);
+        const response = await submitAssessmentOnBackend(assessmentId, answerText);
         await refreshBackendState();
-        return;
+        return response.submission
+          ? {
+              score: response.submission.score,
+              passed: response.submission.passed,
+              feedback: response.submission.feedback,
+              status: response.submission.status
+            }
+          : null;
       }
+
+      let localResult: AssessmentSubmissionResult | null = null;
 
       setState((current) => {
         const assessment = current.assessments.find((item) => item.id === assessmentId);
@@ -667,6 +856,13 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
                 feedback:
                   "Auto-graded demo submission recorded. Review the answer detail against the expected response."
               };
+
+        localResult = {
+          score: evaluation.score,
+          passed: evaluation.passed,
+          feedback: evaluation.feedback,
+          status: assessment.type === "Essay" || assessment.type === "Short Answer" ? "pending_review" : "graded"
+        };
 
         return {
           ...current,
@@ -697,6 +893,8 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
           ]
         };
       });
+
+      return localResult;
     },
     async scheduleLiveClass(payload) {
       const normalizedPayload = normalizeSchedulePayload(payload);
@@ -941,7 +1139,7 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
         } else {
           alert(result.message || "Failed to send email.");
         }
-      } catch (error) {
+      } catch {
         alert("Error sending email via SMTP.");
       }
     }

@@ -30,8 +30,9 @@ class CourseController extends Controller
                         ->orWhere('level', 'like', $search);
                 })
             )
-            ->with('modules.lessons.completedUsers:id,name')
-            ->orderBy('title')
+            ->with('modules.lessons.completedUsers:id,name', 'teacher:id,name,email,department,city,profile_image_url,bio,rating_average,rating_count')
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
             ->paginate($this->perPage($request, 12));
 
         return response()->json([
@@ -62,7 +63,7 @@ class CourseController extends Controller
                         ->orWhere('level', 'like', $search);
                 })
             )
-            ->with('modules.lessons.completedUsers:id,name')
+            ->with('modules.lessons.completedUsers:id,name', 'teacher:id,name,email,department,city,profile_image_url,bio,rating_average,rating_count')
             ->orderBy('title')
             ->paginate($this->perPage($request));
 
@@ -89,6 +90,12 @@ class CourseController extends Controller
             'level' => ['nullable', 'string', 'max:50'],
             'status' => ['nullable', 'in:draft,published'],
             'teacher_id' => ['nullable', 'exists:users,id'],
+            'what_you_will_learn' => ['nullable', 'array'],
+            'what_you_will_learn.*' => ['string', 'max:255'],
+            'requirements' => ['nullable', 'array'],
+            'requirements.*' => ['string', 'max:255'],
+            'target_audience' => ['nullable', 'array'],
+            'target_audience.*' => ['string', 'max:255'],
         ]);
 
         $teacherId = $validated['teacher_id'] ?? ($user->role === 'teacher' ? $user->id : null);
@@ -100,6 +107,9 @@ class CourseController extends Controller
             'slug' => Str::slug($validated['title'] . '-' . now()->timestamp),
             'category' => $validated['category'],
             'description' => $validated['description'],
+            'what_you_will_learn' => $validated['what_you_will_learn'] ?? [],
+            'requirements' => $validated['requirements'] ?? [],
+            'target_audience' => $validated['target_audience'] ?? [],
             'price_bdt' => (int) ($validated['price'] ?? 0),
             'price' => $validated['price'] ?? 0,
             'level' => $validated['level'] ?? 'Beginner',
@@ -113,7 +123,7 @@ class CourseController extends Controller
 
         return response()->json([
             'message' => 'Course created successfully.',
-            'data' => LmsSupport::serializeCourse($course->load('modules.lessons.completedUsers:id,name'), $user),
+            'data' => LmsSupport::serializeCourse($course->load('modules.lessons.completedUsers:id,name', 'teacher:id,name,email,department,city,profile_image_url,bio,rating_average,rating_count'), $user),
         ], 201);
     }
 
@@ -123,7 +133,7 @@ class CourseController extends Controller
         $this->guardTenantCourse($user, $course);
 
         return response()->json([
-            'data' => LmsSupport::serializeCourse($course->load('modules.lessons.completedUsers:id,name'), $user),
+            'data' => LmsSupport::serializeCourse($course->load('modules.lessons.completedUsers:id,name', 'teacher:id,name,email,department,city,profile_image_url,bio,rating_average,rating_count'), $user),
         ]);
     }
 
@@ -143,7 +153,7 @@ class CourseController extends Controller
 
         return response()->json([
             'message' => 'Course published successfully.',
-            'data' => LmsSupport::serializeCourse($course->fresh()->load('modules.lessons.completedUsers:id,name'), $user),
+            'data' => LmsSupport::serializeCourse($course->fresh()->load('modules.lessons.completedUsers:id,name', 'teacher:id,name,email,department,city,profile_image_url,bio,rating_average,rating_count'), $user),
         ]);
     }
 

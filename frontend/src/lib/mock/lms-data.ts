@@ -35,7 +35,22 @@ export type UserProfile = {
   name: string;
   role: Role;
   email: string;
+  token?: string;
   department?: string;
+  profileImageUrl?: string | null;
+  bio?: string | null;
+  ratingAverage?: number | null;
+  ratingCount?: number;
+};
+
+export type CourseInstructor = {
+  id: string;
+  name: string;
+  profileImageUrl?: string | null;
+  bio?: string | null;
+  ratingAverage?: number | null;
+  ratingCount?: number;
+  studentsCount?: number;
 };
 
 export type Lesson = {
@@ -69,6 +84,12 @@ export type Course = {
   status: "draft" | "published";
   price: number;
   enrollmentCount: number;
+  assessmentGateEnabled?: boolean;
+  assessmentCount?: number;
+  whatYouWillLearn?: string[];
+  requirements?: string[];
+  targetAudience?: string[];
+  instructor?: CourseInstructor | null;
   modules: CourseModule[];
 };
 
@@ -193,6 +214,8 @@ export type BillingState = {
   monthlyPrice: number;
   seatLimit: number;
   overagePerSeat: number;
+  billingStatus?: string;
+  nextBillingAt?: string | null;
 };
 
 export type Enrollment = {
@@ -207,6 +230,17 @@ export type Enrollment = {
   progressPercentage: number;
   enrolledAt?: string;
   completedAt?: string | null;
+};
+
+export type Wishlist = {
+  id: string;
+  tenantId?: string;
+  vendorId?: string;
+  courseId: string;
+  courseTitle?: string;
+  studentId: string;
+  studentName?: string;
+  addedAt?: string;
 };
 
 export type Invoice = {
@@ -245,6 +279,7 @@ export type MockLmsState = {
   users: UserProfile[];
   courses: Course[];
   enrollments: Enrollment[];
+  wishlists: Wishlist[];
   assessments: Assessment[];
   submissions: Submission[];
   liveClasses: LiveClass[];
@@ -581,6 +616,7 @@ export const seedState: MockLmsState = {
     }
   ],
   enrollments: [],
+  wishlists: [],
   assessments: [
     {
       id: "assessment-1",

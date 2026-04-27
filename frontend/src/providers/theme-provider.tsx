@@ -17,7 +17,8 @@ type ThemeContextValue = {
   toggleTheme: () => void;
 };
 
-const STORAGE_KEY = "betopia-theme-mode";
+const STORAGE_KEY = "smart-lms-theme-mode";
+const LEGACY_STORAGE_KEY = "betopia-theme-mode";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
@@ -32,7 +33,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+    const stored =
+      (window.localStorage.getItem(STORAGE_KEY) as ThemeMode | null) ??
+      (window.localStorage.getItem(LEGACY_STORAGE_KEY) as ThemeMode | null);
     const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const initialTheme = stored ?? (systemDark ? "dark" : "light");
 

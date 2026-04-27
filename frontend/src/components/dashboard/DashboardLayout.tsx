@@ -2,29 +2,35 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useState, useEffect, useRef } from "react";
 import {
-  LayoutDashboard,
-  Home,
-  BookOpen,
-  Users,
-  GraduationCap,
   Award,
-  CreditCard,
-  ClipboardList,
-  Video,
-  FileText,
   BarChart3,
-  LogOut,
-  Menu,
-  X,
   Bell,
-  ChevronDown,
-  MessageSquare,
-  Megaphone,
+  BookOpen,
   CheckSquare,
-  ShieldCheck
+  ChevronDown,
+  ClipboardList,
+  CreditCard,
+  FileText,
+  GraduationCap,
+  HelpCircle,
+  Home,
+  LayoutDashboard,
+  LogOut,
+  Megaphone,
+  Menu,
+  MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  Settings,
+  ShieldCheck,
+  UserCircle,
+  Users,
+  Video,
+  X
 } from "lucide-react";
 import { dashboardPathForRole, useMockLms } from "@/providers/mock-lms-provider";
 
@@ -41,40 +47,51 @@ type NavSection = {
 
 const adminNav: NavSection[] = [
   {
-    label: "Overview",
+    label: "Dashboard",
     items: [
       { href: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
     ],
   },
   {
-    label: "Management",
+    label: "Teaching",
     items: [
-      { href: "/admin/users", label: "Users", icon: <Users className="w-4 h-4" /> },
       { href: "/admin/courses", label: "Courses", icon: <BookOpen className="w-4 h-4" /> },
       { href: "/admin/enrollments", label: "Enrollments", icon: <GraduationCap className="w-4 h-4" /> },
       { href: "/admin/live-classes", label: "Live Classes", icon: <Video className="w-4 h-4" /> },
     ],
   },
   {
-    label: "Academic",
+    label: "Assessment",
     items: [
       { href: "/admin/assessments", label: "Assessments", icon: <ClipboardList className="w-4 h-4" /> },
       { href: "/admin/certificates", label: "Certificates", icon: <Award className="w-4 h-4" /> },
     ],
   },
   {
-    label: "Admin",
+    label: "Communication",
     items: [
-      { href: "/admin/reports/compliance", label: "Reports", icon: <BarChart3 className="w-4 h-4" /> },
-      { href: "/admin/billing", label: "Billing", icon: <CreditCard className="w-4 h-4" /> },
+      { href: "/admin/users", label: "Users", icon: <Users className="w-4 h-4" /> },
+    ],
+  },
+  {
+    label: "Reports",
+    items: [
+      { href: "/admin/reports/compliance", label: "Compliance", icon: <BarChart3 className="w-4 h-4" /> },
       { href: "/admin/audit-logs", label: "Audit Logs", icon: <ShieldCheck className="w-4 h-4" /> },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { href: "/admin/billing", label: "Billing", icon: <CreditCard className="w-4 h-4" /> },
+      { href: "/admin/institute-settings", label: "Institute", icon: <Settings className="w-4 h-4" /> },
     ],
   },
 ];
 
 const teacherNav: NavSection[] = [
   {
-    label: "Overview",
+    label: "Dashboard",
     items: [
       { href: "/teacher/dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
     ],
@@ -96,33 +113,55 @@ const teacherNav: NavSection[] = [
     ],
   },
   {
-    label: "Tools",
+    label: "Communication",
+    items: [
+      { href: "/teacher/announcements", label: "Announcements", icon: <Megaphone className="w-4 h-4" /> },
+    ],
+  },
+  {
+    label: "Reports",
     items: [
       { href: "/teacher/content-uploads", label: "Content Uploads", icon: <FileText className="w-4 h-4" /> },
-      { href: "/teacher/announcements", label: "Announcements", icon: <Megaphone className="w-4 h-4" /> },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { href: "/teacher/settings", label: "Settings", icon: <Settings className="w-4 h-4" /> },
     ],
   },
 ];
 
 const studentNav: NavSection[] = [
   {
-    label: "Overview",
+    label: "Dashboard",
     items: [
       { href: "/student/dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
     ],
   },
   {
-    label: "Learning",
+    label: "Teaching",
     items: [
       { href: "/student/courses", label: "My Courses", icon: <BookOpen className="w-4 h-4" /> },
       { href: "/student/live-classes", label: "Live Classes", icon: <Video className="w-4 h-4" /> },
+    ],
+  },
+  {
+    label: "Assessment",
+    items: [
       { href: "/student/assignments", label: "Assignments", icon: <CheckSquare className="w-4 h-4" /> },
     ],
   },
   {
-    label: "Achievements",
+    label: "Reports",
     items: [
       { href: "/student/certificates", label: "Certificates", icon: <Award className="w-4 h-4" /> },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { href: "/student/settings", label: "Settings", icon: <Settings className="w-4 h-4" /> },
     ],
   },
 ];
@@ -145,14 +184,18 @@ function getRoleColor(role?: string) {
   return "#E8A020"; // gold for admin
 }
 
-function SidebarItem({ href, label, icon }: NavItem) {
+function SidebarItem({ href, label, icon, collapsed = false }: NavItem & { collapsed?: boolean }) {
   const pathname = usePathname();
-  const active = pathname === href || (href !== "/admin/dashboard" && href !== "/teacher/dashboard" && href !== "/student/dashboard" && pathname.startsWith(href));
+  const active =
+    href === "/"
+      ? pathname === "/"
+      : pathname === href ||
+        (href !== "/admin/dashboard" && href !== "/teacher/dashboard" && href !== "/student/dashboard" && pathname.startsWith(href));
 
   return (
-    <Link href={href} className={`dash-nav-item${active ? " active" : ""}`}>
-      <span className="shrink-0">{icon}</span>
-      <span className="truncate">{label}</span>
+    <Link href={href} className={`dash-nav-item${active ? " active" : ""}`} title={collapsed ? label : undefined}>
+      <span className="dash-nav-icon">{icon}</span>
+      <span className="dash-nav-text truncate">{label}</span>
     </Link>
   );
 }
@@ -168,6 +211,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const effectiveRole = role ?? (currentUser?.role as "admin" | "teacher" | "student" | undefined) ?? "admin";
   const navSections = getNavForRole(effectiveRole);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const pathname = usePathname();
@@ -253,6 +297,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       : effectiveRole === "teacher"
         ? { href: "/teacher/courses", label: "Open Courses" }
         : { href: "/student/courses", label: "Open Courses" };
+  const pathSegments = pathname.split("/").filter(Boolean);
+  const pageTitle = pathSegments.at(-1)?.replace(/-/g, " ") || "Dashboard";
+  const roleHome = dashboardPathForRole(effectiveRole);
+  const profileLinks = [
+    { href: `/${effectiveRole}/profile`, label: "Profile", icon: <UserCircle className="h-4 w-4" /> },
+    { href: `/${effectiveRole}/settings`, label: "Settings", icon: <Settings className="h-4 w-4" /> },
+    { href: "/help", label: "Help", icon: <HelpCircle className="h-4 w-4" /> },
+  ];
 
   function ProfilePopover({ compact = false }: { compact?: boolean }) {
     return (
@@ -274,7 +326,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           </div>
         </div>
 
-        <div className="grid gap-3 px-4 py-4 text-sm">
+        <div className="grid gap-2 px-4 py-4 text-sm">
           <div className="rounded-xl border border-border/70 bg-background/70 p-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current Plan</p>
             <p className="mt-2 font-serif text-2xl text-foreground">{planSummary}</p>
@@ -293,13 +345,32 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           <Link href={profileAction.href} className="btn-secondary w-full justify-center text-center">
             {profileAction.label}
           </Link>
+          <div className="my-1 border-t border-border/70" />
+          {profileLinks.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-muted-foreground transition hover:bg-muted/70 hover:text-foreground"
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </Link>
+          ))}
+          <button
+            type="button"
+            onClick={() => void handleSignOut()}
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-destructive transition hover:bg-destructive/10"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen w-full overflow-x-hidden">
+    <div className={`dash-layout flex min-h-screen w-full overflow-x-hidden ${sidebarCollapsed ? "dash-collapsed" : ""}`}>
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -309,7 +380,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       )}
 
       {/* Sidebar */}
-      <aside className={`dash-sidebar${sidebarOpen ? " open" : ""}`}>
+      <aside className={`dash-sidebar${sidebarOpen ? " open" : ""}${sidebarCollapsed ? " collapsed" : ""}`}>
         {/* Logo */}
         <div className="dash-sidebar-header">
           <div className="dash-sidebar-logo">SL</div>
@@ -325,6 +396,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             onClick={() => setSidebarOpen(false)}
           >
             <X className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            className="ml-auto hidden rounded-xl p-2 text-white/50 transition hover:bg-white/10 hover:text-white lg:inline-flex"
+            onClick={() => setSidebarCollapsed((current) => !current)}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
         </div>
 
@@ -345,17 +424,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         <nav className="dash-sidebar-nav">
           <div className="dash-nav-section">
             <p className="dash-nav-section-label">General</p>
-            <Link href="/" className="dash-nav-item">
-              <span className="shrink-0"><Home className="w-4 h-4" /></span>
-              <span className="truncate">Home</span>
-            </Link>
+            <SidebarItem href={roleHome} label="Home" icon={<Home className="w-4 h-4" />} collapsed={sidebarCollapsed} />
           </div>
 
           {navSections.map((section) => (
             <div key={section.label} className="dash-nav-section">
               <p className="dash-nav-section-label">{section.label}</p>
               {section.items.map((item) => (
-                <SidebarItem key={item.href} {...item} />
+                <SidebarItem key={item.href} {...item} collapsed={sidebarCollapsed} />
               ))}
             </div>
           ))}
@@ -369,7 +445,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             className="dash-nav-item w-full text-left hover:text-red-400"
           >
             <LogOut className="w-4 h-4 shrink-0" />
-            <span>Sign Out</span>
+            <span className="dash-nav-text">Sign Out</span>
           </button>
         </div>
       </aside>
@@ -378,7 +454,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       <div className="dash-main">
         {/* Topbar */}
         <header className="dash-topbar">
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-4">
             {/* Mobile menu toggle */}
             <button
               type="button"
@@ -388,19 +464,28 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <Menu className="w-5 h-5" />
             </button>
 
-            {/* Breadcrumb */}
-            <div className="hidden sm:flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground capitalize">{effectiveRole}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground rotate-[-90deg]" />
-              <span className="font-semibold text-foreground capitalize">
-                {pathname.split("/").pop()?.replace(/-/g, " ") || "Dashboard"}
-              </span>
+            <div className="min-w-0">
+              <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
+                <Link href={roleHome} className="capitalize transition hover:text-foreground">{effectiveRole}</Link>
+                {pathSegments.slice(1).map((segment, index) => (
+                  <span key={`${segment}-${index}`} className="inline-flex items-center gap-2">
+                    <ChevronDown className="h-3.5 w-3.5 rotate-[-90deg]" />
+                    <span className="capitalize">{segment.replace(/-/g, " ")}</span>
+                  </span>
+                ))}
+              </div>
+              <h2 className="truncate text-base font-bold capitalize text-foreground md:text-lg">{pageTitle}</h2>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            <label className="dash-header-search hidden xl:flex">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <span className="sr-only">Search workspace</span>
+              <input type="search" placeholder="Search courses, learners, reports..." />
+            </label>
             <Link
-              href="/"
+              href={roleHome}
               className="hidden sm:inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
             >
               <Home className="w-4 h-4" />
@@ -412,7 +497,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <button
                 type="button"
                 onClick={() => setNotifOpen(!notifOpen)}
-                className="relative p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                className="relative rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40"
+                aria-label="Open notifications"
               >
                 <Bell className="w-5 h-5" />
                 {unreadNotifs.length > 0 && (
@@ -447,7 +533,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <button
                 type="button"
                 onClick={() => setProfileOpen((current) => !current)}
-                className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition hover:bg-muted/60"
+                className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-primary/40"
+                aria-label="Open profile menu"
               >
                 <div className="avatar h-9 w-9 text-sm" style={{ background: `linear-gradient(135deg, ${accentColor}99, ${accentColor})` }}>
                   {avatarInitials}
@@ -670,6 +757,74 @@ export function AlertBanner({
           <X className="w-4 h-4" />
         </button>
       )}
+    </div>
+  );
+}
+
+export function PageContainer({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`page-container ${className}`}>{children}</div>;
+}
+
+export function DataCard({
+  title,
+  description,
+  meta,
+  actions,
+  children,
+  className = "",
+}: {
+  title: string;
+  description?: string;
+  meta?: ReactNode;
+  actions?: ReactNode;
+  children?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`data-card ${className}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-base font-bold text-foreground">{title}</h3>
+          {description ? <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p> : null}
+          {meta ? <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">{meta}</div> : null}
+        </div>
+        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+      </div>
+      {children ? <div className="mt-5">{children}</div> : null}
+    </section>
+  );
+}
+
+export function ActionButton({
+  variant = "secondary",
+  className = "",
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "accent" | "ghost" | "danger" }) {
+  const variantClass =
+    variant === "primary"
+      ? "btn-primary"
+      : variant === "accent"
+        ? "btn-accent"
+        : variant === "ghost"
+          ? "btn-ghost"
+          : variant === "danger"
+            ? "btn-danger"
+            : "btn-secondary";
+
+  return <button {...props} className={`${variantClass} ${className}`} />;
+}
+
+export function SearchFilterBar({
+  children,
+  search,
+}: {
+  children?: ReactNode;
+  search?: ReactNode;
+}) {
+  return (
+    <div className="search-filter-bar">
+      {search ? <div className="min-w-[15rem] flex-1">{search}</div> : null}
+      {children ? <div className="flex flex-wrap items-center gap-2">{children}</div> : null}
     </div>
   );
 }

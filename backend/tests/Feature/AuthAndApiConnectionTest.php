@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Course;
 use App\Models\Invoice;
 use App\Models\User;
+use App\Models\Wishlist;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -165,5 +166,75 @@ class AuthAndApiConnectionTest extends TestCase
 
         $this->assertCount(2, $invoiceNumbers);
         $this->assertCount(2, $invoiceNumbers->unique());
+    }
+
+    public function test_student_can_add_and_remove_course_wishlist_item(): void
+    {
+        $student = User::query()->where('email', 'student@example.com')->firstOrFail();
+        $course = Course::query()
+            ->where('tenant_id', $student->tenant_id)
+            ->where('status', 'published')
+            ->firstOrFail();
+
+        $addResponse = $this->actingAs($student, 'sanctum')
+            ->postJson('/api/v1/wishlists', [
+                'course_id' => $course->id,
+            ]);
+
+        $addResponse
+            ->assertCreated()
+            ->assertJsonPath('data.courseId', $course->id)
+            ->assertJsonPath('data.studentId', $student->id);
+
+        $this->assertDatabaseHas('wishlists', [
+            'tenant_id' => $student->tenant_id,
+            'course_id' => $course->id,
+            'student_id' => $student->id,
+        ]);
+
+        $removeResponse = $this->actingAs($student, 'sanctum')
+            ->deleteJson("/api/v1/wishlists/{$course->id}");
+
+        $removeResponse->assertOk();
+
+        $this->assertDatabaseMissing('wishlists', [
+            'tenant_id' => $student->tenant_id,
+            'course_id' => $course->id,
+            'student_id' => $student->id,
+        ]);
+    }
+
+    public function test_student_can_self_enroll_in_published_course(): void
+    {
+        $student = User::query()->where('email', 'student@example.com')->firstOrFail();
+        $course = Course::query()
+            ->where('tenant_id', $student->tenant_id)
+            ->where('status', 'published')
+            ->firstOrFail();
+
+        Wishlist::query()->create([
+            'tenant_id' => $student->tenant_id,
+            'course_id' => $course->id,
+            'student_id' => $student->id,
+            'added_at' => now(),
+        ]);
+
+        $response = $this->actingAs($student, 'sanctum')
+            ->postJson('/api/v1/enrollments', [
+                'course_id' => $course->id,
+            ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.courseId', $course->id)
+            ->assertJsonPath('data.studentId', $student->id)
+            ->assertJsonPath('data.status', 'active');
+
+        $this->assertDatabaseHas('enrollments', [
+            'tenant_id' => $student->tenant_id,
+            'course_id' => $course->id,
+            'student_id' => $student->id,
+            'status' => 'active',
+        ]);
     }
 }

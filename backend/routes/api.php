@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\TenantBrandingController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\VendorController;
+use App\Http\Controllers\Api\WishlistController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -53,6 +54,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/enrollments', [EnrollmentController::class, 'index']);
         Route::post('/enrollments', [EnrollmentController::class, 'store']);
         Route::patch('/enrollments/{enrollment}', [EnrollmentController::class, 'update']);
+        Route::get('/wishlists', [WishlistController::class, 'index']);
+        Route::post('/wishlists', [WishlistController::class, 'store']);
+        Route::delete('/wishlists/{course}', [WishlistController::class, 'destroy']);
 
         Route::get('/assessments', [AssessmentController::class, 'index']);
         Route::post('/assessments/generate', [AssessmentController::class, 'generate']);
@@ -94,5 +98,4 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/audit-events', [AuditController::class, 'index']);
     });
 });
-
 

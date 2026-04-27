@@ -15,6 +15,9 @@ class Course extends Model
         'slug',
         'category',
         'description',
+        'what_you_will_learn',
+        'requirements',
+        'target_audience',
         'price_bdt',
         'status',
         'price',
@@ -30,6 +33,9 @@ class Course extends Model
             'price' => 'decimal:2',
             'price_bdt' => 'integer',
             'published_at' => 'datetime',
+            'what_you_will_learn' => 'array',
+            'requirements' => 'array',
+            'target_audience' => 'array',
         ];
     }
 
@@ -71,5 +77,10 @@ class Course extends Model
     public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class);
+    }
+
+    public function wishlists(): HasMany
+    {
+        return $this->hasMany(Wishlist::class);
     }
 }

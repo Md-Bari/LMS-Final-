@@ -10,7 +10,7 @@ import type {
 
 import type { Certificate, Course, TenantBranding } from "@/lib/mock-lms";
 
-export const pageFrame = "mx-auto w-full max-w-[1840px] px-4 sm:px-6 lg:px-8";
+export const pageFrame = "mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8";
 
 export function downloadTextFile(filename: string, content: string, type = "text/plain;charset=utf-8") {
   const blob = new Blob([content], { type });
@@ -40,7 +40,7 @@ export function SeeMoreButton({
       <button
         type="button"
         onClick={onClick}
-        className="inline-flex min-h-[42px] items-center justify-center rounded-full border border-foreground/15 bg-white px-5 py-2 text-sm font-semibold text-foreground shadow-soft transition hover:-translate-y-0.5 dark:border-white/10 dark:bg-[#13212a]"
+        className="inline-flex min-h-[42px] items-center justify-center rounded-full border border-foreground/15 bg-white/90 px-5 py-2 text-sm font-semibold text-foreground shadow-soft transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-white dark:border-white/10 dark:bg-[#13212a]"
       >
         {expanded ? "Show less" : `See more (${remaining} more)`}
       </button>
@@ -457,7 +457,7 @@ export function Section({
     <section
       className={`min-w-0 overflow-hidden rounded-[24px] border p-6 shadow-soft ${
         accent
-          ? "border-[#E8A020]/25 bg-[#1A1A2E] text-white shadow-glow dark:border-[#E8A020]/25 dark:bg-[#151526]"
+          ? "border-[#E8A020]/25 bg-[linear-gradient(150deg,#17304d_0%,#1f3d5e_58%,#c88b2c_100%)] text-white shadow-glow dark:border-[#E8A020]/25 dark:bg-[#151526]"
           : "border-border/70 bg-card/80 backdrop-blur dark:border-white/8 dark:bg-white/5"
       }`}
     >
@@ -487,12 +487,12 @@ export function StatCard({
 }) {
   return (
     <div
-      className={`group min-w-0 overflow-hidden rounded-[24px] border border-border/70 bg-card/85 p-5 shadow-soft backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-glow dark:border-white/8 dark:bg-white/5 ${className}`}
+      className={`group min-w-0 overflow-hidden rounded-[24px] border border-border/70 bg-card/85 p-5 shadow-soft backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_20px_45px_-28px_rgba(39,120,140,0.45)] dark:border-white/8 dark:bg-white/5 ${className}`}
     >
       <div className="flex min-w-0 items-start justify-between gap-3">
         <p className="min-w-0 text-xs uppercase tracking-[0.22em] text-muted-foreground text-pretty-wrap">{label}</p>
         {icon ? (
-          <div className="shrink-0 rounded-[18px] bg-[#1A1A2E]/6 p-2.5 text-[#1A1A2E] dark:bg-white/10 dark:text-[#E8A020]">
+          <div className="shrink-0 rounded-[18px] bg-primary/10 p-2.5 text-primary dark:bg-white/10 dark:text-[#E8A020]">
             {icon}
           </div>
         ) : null}
@@ -560,7 +560,7 @@ export function PrimaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#1A1A2E_0%,#2D2D50_58%,#E8A020_100%)] px-5 py-3 text-sm font-semibold text-white shadow-glow ring-1 ring-white/20 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-20px_rgba(232,160,32,0.58)] disabled:cursor-not-allowed disabled:opacity-60 ${props.className ?? ""}`}
+      className={`inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#216a83_0%,#2b7e95_56%,#d79a3d_100%)] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_30px_-16px_rgba(43,126,149,0.55)] ring-1 ring-white/20 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_45px_-20px_rgba(43,126,149,0.6)] disabled:cursor-not-allowed disabled:opacity-60 ${props.className ?? ""}`}
     />
   );
 }
@@ -569,7 +569,7 @@ export function SecondaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) 
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center rounded-full border border-[#1A1A2E]/15 bg-card/85 px-5 py-3 text-sm font-semibold text-foreground shadow-soft transition duration-300 hover:-translate-y-0.5 hover:border-[#E8A020]/70 hover:bg-card dark:border-white/10 dark:bg-white/5 ${props.className ?? ""}`}
+      className={`inline-flex items-center justify-center rounded-full border border-foreground/15 bg-card/85 px-5 py-3 text-sm font-semibold text-foreground shadow-soft transition duration-300 hover:-translate-y-0.5 hover:border-primary/45 hover:bg-card dark:border-white/10 dark:bg-white/5 ${props.className ?? ""}`}
     />
   );
 }

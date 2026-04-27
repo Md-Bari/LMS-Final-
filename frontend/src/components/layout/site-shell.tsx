@@ -38,7 +38,7 @@ export function SiteShell({ children }: ShellProps) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-grid-pattern bg-[size:90px_90px] opacity-25" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[32rem] bg-[radial-gradient(circle_at_top,rgba(232,160,32,0.18),transparent_52%),radial-gradient(circle_at_18%_18%,rgba(255,246,233,0.82),transparent_32%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[32rem] bg-[radial-gradient(circle_at_top,rgba(232,160,32,0.18),transparent_52%),radial-gradient(circle_at_18%_18%,rgba(255,246,233,0.82),transparent_32%)] dark:bg-[radial-gradient(circle_at_top,rgba(240,184,79,0.16),transparent_48%),radial-gradient(circle_at_18%_18%,rgba(39,120,140,0.14),transparent_34%)]" />
       <div className="relative z-10">
         <NavigationChrome />
         <main>{children}</main>
@@ -88,10 +88,10 @@ export function HeroSection({
           )}
         </div>
 
-        <div className="rounded-[2rem] border border-white/65 bg-white/80 p-5 shadow-glow backdrop-blur">
+        <div className="rounded-[2rem] border border-white/65 bg-white/80 p-5 shadow-glow backdrop-blur dark:border-white/10 dark:bg-white/5">
           <div className="grid gap-4 sm:grid-cols-2">
             {stats.map((stat) => (
-              <div key={stat.label} className="rounded-[1.5rem] border border-black/5 bg-background/90 p-5">
+              <div key={stat.label} className="rounded-[1.5rem] border border-black/5 bg-background/90 p-5 dark:border-white/8 dark:bg-[#13212a]">
                 <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{stat.label}</p>
                 <p className="mt-3 font-serif text-4xl">{stat.value}</p>
               </div>

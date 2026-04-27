@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChangeEvent } from "react";
+import Link from "next/link";
 import * as Tabs from "@radix-ui/react-tabs";
 import {
   BookOpen,
@@ -8,6 +9,7 @@ import {
   CalendarClock,
   HardDriveUpload,
   Layers3,
+  Settings2,
   Upload,
   Users
 } from "lucide-react";
@@ -56,6 +58,7 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonType, setLessonType] = useState<"video" | "document" | "quiz" | "assignment" | "live">("video");
   const [lessonDuration, setLessonDuration] = useState(15);
+  const [lessonReleaseAt, setLessonReleaseAt] = useState("");
   const [uploadStatus, setUploadStatus] = useState("");
 
   const selectedCourse = state.courses.find((course) => course.id === defaultCourseId) ?? state.courses[0];
@@ -96,6 +99,10 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
             </div>
 
             <div className="flex flex-wrap gap-3">
+              <Link href={`/teacher/courses/${selectedCourse.id}`} className="btn-accent inline-flex min-h-[42px] items-center gap-2 px-5">
+                <Settings2 className="h-4 w-4" />
+                Add resources
+              </Link>
               <TextInput value={moduleTitle} onChange={(event) => setModuleTitle(event.target.value)} placeholder="New module title" className="max-w-xs" />
               <SecondaryButton
                 className="min-h-[42px] px-5"
@@ -115,7 +122,7 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
             {selectedModule ? (
               <div className="grid gap-3 rounded-[20px] border border-foreground/10 bg-white p-4 dark:border-white/8 dark:bg-white/5">
                 <p className="text-sm font-semibold text-foreground">Add lesson to {selectedModule.title}</p>
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-3 md:grid-cols-4">
                   <TextInput value={lessonTitle} onChange={(event) => setLessonTitle(event.target.value)} placeholder="Lesson title" />
                   <SelectInput value={lessonType} onChange={(event) => setLessonType(event.target.value as typeof lessonType)}>
                     <option value="video">Video</option>
@@ -124,7 +131,8 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
                     <option value="assignment">Assignment</option>
                     <option value="live">Live</option>
                   </SelectInput>
-                  <TextInput type="number" value={lessonDuration} onChange={(event) => setLessonDuration(Number(event.target.value))} />
+                  <TextInput type="number" value={lessonDuration} onChange={(event) => setLessonDuration(Number(event.target.value))} placeholder="Duration (min)" />
+                  <TextInput type="datetime-local" value={lessonReleaseAt} onChange={(event) => setLessonReleaseAt(event.target.value)} placeholder="Release date" />
                 </div>
                 <SecondaryButton
                   className="min-h-[42px]"
@@ -133,10 +141,12 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
                     addLesson(selectedCourse.id, selectedModule.id, {
                       title: lessonTitle,
                       type: lessonType,
-                      durationMinutes: lessonDuration
+                      durationMinutes: lessonDuration,
+                      releaseAt: lessonReleaseAt || undefined
                     });
                     setLessonTitle("");
                     setLessonDuration(15);
+                    setLessonReleaseAt("");
                   }}
                 >
                   Add lesson
@@ -155,6 +165,7 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
                           </div>
                           <input
                             type="file"
+                            accept=".pdf,.mp4,.docx,.jpg,.jpeg,.png,.webp"
                             className="max-w-[15rem] text-xs"
                             onChange={async (event) => {
                               const file = event.target.files?.[0];
@@ -203,6 +214,15 @@ export function CourseWorkbench({ defaultCourseId }: { defaultCourseId?: string 
                 <StatCard label="Modules" value={String(course.modules.length)} icon={<Layers3 className="h-5 w-5" />} className="min-h-[7.2rem] p-4" />
                 <StatCard label="Lessons" value={String(courseLessonCount(course))} icon={<BookOpen className="h-5 w-5" />} className="min-h-[7.2rem] p-4" />
                 <StatCard label="Enrollments" value={String(course.enrollmentCount)} icon={<Users className="h-5 w-5" />} className="min-h-[7.2rem] p-4" />
+              </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Link href={`/teacher/courses/${course.id}`} className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm">
+                  <Settings2 className="h-4 w-4" />
+                  Add resources
+                </Link>
+                <Link href={`/teacher/assessments?courseId=${course.id}`} className="btn-secondary inline-flex items-center gap-2 px-4 py-2 text-sm">
+                  Set assessment
+                </Link>
               </div>
             </div>
           ))}
@@ -737,7 +757,7 @@ export function LiveClassesPanel() {
     hostEmail?: string;
     durationMinutes: number;
   };
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<LiveClassFormState>({
     title: "New live session",
     courseId: state.courses[0]?.id ?? "",
     batchName: "",
@@ -745,11 +765,11 @@ export function LiveClassesPanel() {
     date: new Date().toISOString().slice(0, 10),
     startTime: new Date().toISOString().slice(11, 16),
     endTime: new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(11, 16),
-    meetingType: "jitsi" as const,
+    meetingType: "jitsi",
     meetingLink: "",
     hostEmail: "tanvirulislam5386@gmail.com",
     durationMinutes: 60
-  } satisfies LiveClassFormState);
+  });
   const visibleLiveClasses = showAllLiveClasses ? state.liveClasses : state.liveClasses.slice(0, 5);
 
   async function handleGoLive(classId: string, meetingUrl?: string | null) {

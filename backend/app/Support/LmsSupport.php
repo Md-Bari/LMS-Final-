@@ -19,6 +19,7 @@ use App\Models\Attendance;
 use App\Models\Submission;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\Wishlist;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -325,7 +326,24 @@ class LmsSupport
             'phone' => $user->phone,
             'department' => $user->department,
             'city' => $user->city,
+            'profileImageUrl' => $user->profile_image_url,
+            'bio' => $user->bio,
+            'ratingAverage' => $user->rating_average !== null ? (float) $user->rating_average : null,
+            'ratingCount' => $user->rating_count,
         ];
+    }
+
+    private static function normalizeCourseList(?array $items): array
+    {
+        if (! is_array($items) || $items === []) {
+            return [];
+        }
+
+        return collect($items)
+            ->map(fn ($item): string => trim((string) $item))
+            ->filter(fn (string $item): bool => $item !== '')
+            ->values()
+            ->all();
     }
 
     public static function serializeLesson(Lesson $lesson, ?User $viewer = null): array
@@ -366,7 +384,13 @@ class LmsSupport
 
     public static function serializeCourse(Course $course, ?User $viewer = null): array
     {
-        $course->loadMissing('modules.lessons.completedUsers:id,name');
+        $course->loadMissing('modules.lessons.completedUsers:id,name', 'teacher:id,name,email,department,city,profile_image_url,bio,rating_average,rating_count');
+
+        $learnOutcomes = self::normalizeCourseList($course->what_you_will_learn);
+        $requirements = self::normalizeCourseList($course->requirements);
+        $targetAudience = self::normalizeCourseList($course->target_audience);
+        $teacher = $course->teacher;
+        $studentCount = (int) ($course->enrollments_count ?? $course->enrollment_count ?? 0);
 
         return [
             'id' => $course->id,
@@ -380,6 +404,18 @@ class LmsSupport
             'price' => (float) ($course->price_bdt ?? $course->price),
             'priceBdt' => (int) ($course->price_bdt ?? $course->price),
             'enrollmentCount' => $course->enrollments_count ?? $course->enrollment_count,
+            'whatYouWillLearn' => $learnOutcomes,
+            'requirements' => $requirements,
+            'targetAudience' => $targetAudience,
+            'instructor' => $teacher ? [
+                'id' => $teacher->id,
+                'name' => $teacher->name,
+                'profileImageUrl' => $teacher->profile_image_url,
+                'bio' => $teacher->bio,
+                'ratingAverage' => $teacher->rating_average !== null ? (float) $teacher->rating_average : null,
+                'ratingCount' => (int) ($teacher->rating_count ?? 0),
+                'studentsCount' => $studentCount,
+            ] : null,
             'modules' => $course->modules
                 ->sortBy('position')
                 ->values()
@@ -662,6 +698,22 @@ class LmsSupport
         ];
     }
 
+    public static function serializeWishlist(Wishlist $wishlist): array
+    {
+        $wishlist->loadMissing('student:id,name', 'course:id,title');
+
+        return [
+            'id' => $wishlist->id,
+            'tenantId' => $wishlist->tenant_id,
+            'vendorId' => $wishlist->tenant_id,
+            'courseId' => $wishlist->course_id,
+            'courseTitle' => $wishlist->course?->title,
+            'studentId' => $wishlist->student_id,
+            'studentName' => $wishlist->student?->name,
+            'addedAt' => optional($wishlist->added_at)->toIso8601String(),
+        ];
+    }
+
     public static function serializeAttendance(Attendance $attendance): array
     {
         $attendance->loadMissing('student:id,name', 'liveClass:id,title');
@@ -841,6 +893,7 @@ class LmsSupport
                 'billingProfile',
                 'courses.modules.lessons.completedUsers:id,name',
                 'courses.enrollments.student:id,name',
+                'courses.wishlists.student:id,name',
                 'courses.assessments.questions',
                 'courses.assessments.submissions.user:id,name',
                 'courses.liveClasses.attendances.student:id,name',
@@ -869,6 +922,10 @@ class LmsSupport
             ->flatMap(fn (Course $course) => $course->enrollments)
             ->sortByDesc('enrolled_at')
             ->values();
+        $tenantWishlists = $tenantCourses
+            ->flatMap(fn (Course $course) => $course->wishlists)
+            ->sortByDesc('added_at')
+            ->values();
         $tenantAttendances = $tenantLiveClasses
             ->flatMap(fn (LiveClass $liveClass) => $liveClass->attendances)
             ->sortByDesc('created_at')
@@ -884,6 +941,7 @@ class LmsSupport
         $visibleSubmissions = $tenantSubmissions;
         $visibleLiveClasses = $tenantLiveClasses;
         $visibleEnrollments = $tenantEnrollments;
+        $visibleWishlists = $tenantWishlists;
         $visibleAttendances = $tenantAttendances;
         $visibleCertificates = $tenantCertificates;
         $visibleNotifications = $tenant->notifications->sortByDesc('created_at')->values();
@@ -921,6 +979,9 @@ class LmsSupport
                 ->whereIn('course_id', $teacherCourseIds)
                 ->values();
             $visibleEnrollments = $tenantEnrollments
+                ->whereIn('course_id', $teacherCourseIds)
+                ->values();
+            $visibleWishlists = $tenantWishlists
                 ->whereIn('course_id', $teacherCourseIds)
                 ->values();
             $visibleAttendances = $visibleLiveClasses
@@ -973,6 +1034,10 @@ class LmsSupport
             $visibleSubmissions = $studentSubmissions->sortByDesc('submitted_at')->values();
             $visibleLiveClasses = $studentLiveClasses->sortBy('start_at')->values();
             $visibleEnrollments = $studentEnrollments->sortByDesc('enrolled_at')->values();
+            $visibleWishlists = $tenantWishlists
+                ->where('student_id', $user->id)
+                ->sortByDesc('added_at')
+                ->values();
             $visibleAttendances = $studentLiveClasses
                 ->flatMap(fn (LiveClass $liveClass) => $liveClass->attendances)
                 ->where('student_id', $user->id)
@@ -1011,6 +1076,9 @@ class LmsSupport
                 ->all(),
             'enrollments' => $visibleEnrollments
                 ->map(fn (Enrollment $enrollment): array => self::serializeEnrollment($enrollment))
+                ->all(),
+            'wishlists' => $visibleWishlists
+                ->map(fn (Wishlist $wishlist): array => self::serializeWishlist($wishlist))
                 ->all(),
             'attendances' => $visibleAttendances
                 ->map(fn (Attendance $attendance): array => self::serializeAttendance($attendance))

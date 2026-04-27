@@ -507,22 +507,41 @@ export default function SmartLMSHomePage() {
               >
                 AI Studio →
               </Link>
-              <button
-                type="button"
-                onClick={resetDemo}
-                style={{
-                  background: "transparent",
-                  color: "#6B7280",
-                  fontWeight: 500,
-                  fontSize: 15,
-                  padding: "12px 20px",
-                  borderRadius: 10,
-                  border: "none",
-                  cursor: "pointer",
-                }}
-              >
-                Reset demo
-              </button>
+              {isAuthenticated ? (
+                <Link
+                  href={dashboardPathForRole(currentUser?.role)}
+                  style={{
+                    background: "transparent",
+                    color: "#6B7280",
+                    fontWeight: 500,
+                    fontSize: 15,
+                    padding: "12px 20px",
+                    borderRadius: 10,
+                    border: "none",
+                    cursor: "pointer",
+                    textDecoration: "none",
+                  }}
+                >
+                  Open dashboard
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={resetDemo}
+                  style={{
+                    background: "transparent",
+                    color: "#6B7280",
+                    fontWeight: 500,
+                    fontSize: 15,
+                    padding: "12px 20px",
+                    borderRadius: 10,
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  Reset demo
+                </button>
+              )}
             </div>
 
             {/* Stats row */}

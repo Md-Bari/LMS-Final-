@@ -27,11 +27,15 @@ class User extends Authenticatable
         'name',
         'email',
         'phone',
+        'profile_image_url',
         'password',
         'role',
         'department',
         'city',
         'address',
+        'bio',
+        'rating_average',
+        'rating_count',
         'is_active',
     ];
 
@@ -56,6 +60,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'rating_average' => 'decimal:2',
+            'rating_count' => 'integer',
         ];
     }
 
@@ -104,6 +110,11 @@ class User extends Authenticatable
     public function attendances(): HasMany
     {
         return $this->hasMany(Attendance::class, 'student_id');
+    }
+
+    public function wishlists(): HasMany
+    {
+        return $this->hasMany(Wishlist::class, 'student_id');
     }
 
     public function roles(): BelongsToMany

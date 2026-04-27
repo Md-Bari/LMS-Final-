@@ -1,14 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Sparkles, Upload, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
-import { DashboardLayout, PageHeader, StatusBadge, EmptyState } from "@/components/dashboard/DashboardLayout";
+import { DataCard, DashboardLayout, EmptyState, PageHeader, StatusBadge } from "@/components/dashboard/DashboardLayout";
 import { useMockLms } from "@/providers/mock-lms-provider";
 
 type AssessmentType = "MCQ" | "Essay" | "Short Answer";
 
 export default function TeacherAssessmentsPage() {
+  return (
+    <Suspense fallback={<AssessmentPageFallback />}>
+      <TeacherAssessmentsContent />
+    </Suspense>
+  );
+}
+
+function AssessmentPageFallback() {
+  return (
+    <DashboardLayout role="teacher">
+      <PageHeader title="Assessments" subtitle="Create AI-powered assessments and manage submissions." />
+      <div className="card text-sm text-muted-foreground">Loading assessment workspace...</div>
+    </DashboardLayout>
+  );
+}
+
+function TeacherAssessmentsContent() {
   const { state, createAssessmentDraft, publishAssessment, extractNoteText } = useMockLms();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<"list" | "generate">("list");
   const [generating, setGenerating] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -24,6 +44,19 @@ export default function TeacherAssessmentsPage() {
   });
   const [noteFile, setNoteFile] = useState<File | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  useEffect(() => {
+    const courseId = searchParams.get("courseId");
+    const moduleTitle = searchParams.get("moduleTitle");
+    if (courseId) {
+      setGenForm((current) => ({
+        ...current,
+        courseId,
+        title: moduleTitle && !current.title ? `${moduleTitle} Assessment` : current.title
+      }));
+      setTab("generate");
+    }
+  }, [searchParams]);
 
   async function handleNoteUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -43,6 +76,7 @@ export default function TeacherAssessmentsPage() {
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
     if (!genForm.courseId || !genForm.title || !genForm.sourceText) return;
+    const moduleId = searchParams.get("moduleId");
     setGenerating(true);
     try {
       await createAssessmentDraft({
@@ -52,6 +86,12 @@ export default function TeacherAssessmentsPage() {
         count: genForm.count,
         sourceText: genForm.sourceText,
       });
+
+      if (moduleId) {
+        router.push(`/teacher/courses/${genForm.courseId}?moduleId=${moduleId}&fromAssessment=1`);
+        return;
+      }
+
       setAlert({ type: "success", msg: `Assessment "${genForm.title}" generated as draft.` });
       setTab("list");
       setGenForm({ courseId: "", title: "", type: "MCQ", count: 5, sourceText: "" });
@@ -97,7 +137,7 @@ export default function TeacherAssessmentsPage() {
       )}
 
       {tab === "list" ? (
-        <div className="card overflow-hidden p-0">
+        <div className="card">
           {state.assessments.length === 0 ? (
             <EmptyState
               icon={<Sparkles className="w-8 h-8" />}
@@ -106,75 +146,84 @@ export default function TeacherAssessmentsPage() {
               action={<button type="button" onClick={() => setTab("generate")} className="btn-accent">Generate Assessment</button>}
             />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Type</th>
-                    <th>Questions</th>
-                    <th>Course</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {state.assessments.map((a) => {
-                    const course = state.courses.find((c) => c.id === a.courseId);
-                    return (
+            <div className="grid gap-4 xl:grid-cols-2">
+              {state.assessments.map((a) => {
+                const course = state.courses.find((c) => c.id === a.courseId);
+                const passingMark = a.type === "Essay" || a.type === "Short Answer" ? "60%" : "50%";
+                const hasRubric = a.rubricKeywords.length > 0;
+                const expandedCard = expanded === a.id;
+
+                return (
+                  <DataCard
+                    key={a.id}
+                    title={a.title}
+                    description={course?.title ?? "Unassigned course"}
+                    meta={
                       <>
-                        <tr key={a.id}>
-                          <td>
-                            <button type="button" className="font-semibold text-sm text-foreground flex items-center gap-1.5 hover:text-primary transition-colors" onClick={() => setExpanded(expanded === a.id ? null : a.id)}>
-                              {a.title}
-                              {expanded === a.id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                            </button>
-                          </td>
-                          <td><span className="badge badge-primary">{a.type}</span></td>
-                          <td className="text-muted-foreground text-sm">{a.questionCount}</td>
-                          <td className="text-muted-foreground text-sm truncate max-w-[140px]">{course?.title ?? "—"}</td>
-                          <td><StatusBadge status={a.status} /></td>
-                          <td>
-                            {a.status === "draft" && (
-                              <button type="button" onClick={() => handlePublish(a.id, a.title)} className="btn-secondary py-1.5 px-3 text-xs">
-                                Publish
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                        {expanded === a.id && a.questions.length > 0 && (
-                          <tr key={`${a.id}-expanded`}>
-                            <td colSpan={6} className="p-0">
-                              <div className="bg-muted/30 p-4 border-t border-border/50">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">Questions Preview</p>
-                                <div className="grid gap-3">
-                                  {a.questions.slice(0, 3).map((q, qi) => (
-                                    <div key={q.id} className="card-sm">
-                                      <p className="text-sm font-medium text-foreground">Q{qi + 1}. {q.prompt}</p>
-                                      {q.options.length > 0 && (
-                                        <div className="grid grid-cols-2 gap-2 mt-2">
-                                          {q.options.map((opt, oi) => (
-                                            <p key={oi} className={`text-xs px-3 py-1.5 rounded-lg ${opt === q.answer ? "bg-success/15 text-success font-semibold" : "bg-muted/50 text-muted-foreground"}`}>
-                                              {opt}
-                                            </p>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                  {a.questions.length > 3 && (
-                                    <p className="text-xs text-muted-foreground">+ {a.questions.length - 3} more questions</p>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
+                        <span className="badge badge-primary">{a.type}</span>
+                        <StatusBadge status={a.status} />
                       </>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    }
+                    actions={
+                      <>
+                        <button type="button" onClick={() => setExpanded(expandedCard ? null : a.id)} className="btn-secondary px-3 py-2 text-xs">
+                          {expandedCard ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          View
+                        </button>
+                        {a.status === "draft" ? (
+                          <button type="button" onClick={() => handlePublish(a.id, a.title)} className="btn-accent px-3 py-2 text-xs">
+                            Publish
+                          </button>
+                        ) : null}
+                      </>
+                    }
+                  >
+                    <div className="grid gap-3 sm:grid-cols-4">
+                      <div className="rounded-xl bg-muted/45 p-3">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Questions</p>
+                        <p className="mt-2 text-xl font-extrabold text-foreground">{a.questionCount}</p>
+                      </div>
+                      <div className="rounded-xl bg-muted/45 p-3">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Passing</p>
+                        <p className="mt-2 text-xl font-extrabold text-foreground">{passingMark}</p>
+                      </div>
+                      <div className="rounded-xl bg-muted/45 p-3">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Rubric</p>
+                        <p className="mt-2 text-sm font-bold text-foreground">{hasRubric ? "Defined" : "Basic"}</p>
+                      </div>
+                      <div className="rounded-xl bg-muted/45 p-3">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Retake</p>
+                        <p className="mt-2 text-sm font-bold text-foreground">Controlled</p>
+                      </div>
+                    </div>
+
+                    {expandedCard && a.questions.length > 0 ? (
+                      <div className="mt-4 rounded-2xl border border-border/70 bg-background/70 p-4">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Questions Preview</p>
+                        <div className="grid gap-3">
+                          {a.questions.slice(0, 3).map((q, qi) => (
+                            <div key={q.id} className="card-sm">
+                              <p className="text-sm font-medium text-foreground">Q{qi + 1}. {q.prompt}</p>
+                              {q.options.length > 0 ? (
+                                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                  {q.options.map((opt, oi) => (
+                                    <p key={oi} className={`rounded-lg px-3 py-1.5 text-xs ${opt === q.answer ? "bg-success/15 font-semibold text-success" : "bg-muted/50 text-muted-foreground"}`}>
+                                      {opt}
+                                    </p>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          ))}
+                          {a.questions.length > 3 ? (
+                            <p className="text-xs text-muted-foreground">+ {a.questions.length - 3} more questions</p>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </DataCard>
+                );
+              })}
             </div>
           )}
         </div>

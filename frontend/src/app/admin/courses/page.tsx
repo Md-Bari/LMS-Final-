@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { BookOpen, Plus, Filter, Clock, Signal, Tag, Layers, Sparkles } from "lucide-react";
 import {
-  DashboardLayout, PageHeader, StatusBadge, SearchBar, EmptyState, SkeletonTable
+  DashboardLayout, PageHeader, StatusBadge, SearchBar, EmptyState
 } from "@/components/dashboard/DashboardLayout";
-import { fetchCoursesFromBackend, publishCourseOnBackend } from "@/lib/api/lms-backend";
+import { fetchCoursesFromBackend } from "@/lib/api/lms-backend";
 import { useMockLms } from "@/providers/mock-lms-provider";
 import type { Course } from "@/lib/mock-lms";
 
