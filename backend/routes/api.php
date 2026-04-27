@@ -46,6 +46,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/courses', [CourseController::class, 'store']);
         Route::get('/courses/{course}', [CourseController::class, 'show']);
         Route::post('/courses/{course}/publish', [CourseController::class, 'publish']);
+        Route::post('/courses/{course}/assessment-gate', [CourseController::class, 'toggleAssessmentGate']);
         Route::post('/courses/{course}/modules', [CourseController::class, 'storeModule']);
         Route::post('/courses/{course}/modules/{module}/lessons', [CourseController::class, 'storeLesson']);
         Route::post('/courses/{course}/modules/{module}/lessons/{lesson}/content', [CourseController::class, 'uploadLessonContent']);

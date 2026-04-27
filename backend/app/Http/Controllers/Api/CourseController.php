@@ -157,6 +157,23 @@ class CourseController extends Controller
         ]);
     }
 
+    public function toggleAssessmentGate(Request $request, Course $course): JsonResponse
+    {
+        $user = $this->authorizeRoles($request, ['admin', 'teacher']);
+        $this->guardTenantCourse($user, $course);
+
+        $course->update([
+            'assessment_gate_enabled' => $request->boolean('enabled'),
+        ]);
+
+        LmsSupport::audit($user, 'Toggled assessment gate', ($request->boolean('enabled') ? 'Enabled' : 'Disabled') . ' for ' . $course->title, $request->ip());
+
+        return response()->json([
+            'message' => 'Course assessment gate updated successfully.',
+            'data' => LmsSupport::serializeCourse($course->fresh()->load('modules.lessons.completedUsers:id,name', 'teacher:id,name,email,department,city,profile_image_url,bio,rating_average,rating_count'), $user),
+        ]);
+    }
+
     public function storeModule(Request $request, Course $course): JsonResponse
     {
         $user = $this->authorizeRoles($request, ['admin', 'teacher']);

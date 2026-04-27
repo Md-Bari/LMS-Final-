@@ -49,7 +49,9 @@ import {
   updateLiveClassStatusOnBackend,
   uploadLessonContentOnBackend,
   updateTenantBrandingOnBackend,
-  uploadTeacherNote
+  uploadTeacherNote,
+  setCourseAssessmentGateOnBackend,
+  sendEmailOnBackend
 } from "@/lib/api/lms-backend";
 import { readNoteFile } from "@/lib/utils/lms-helpers";
 
@@ -446,6 +448,12 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
       }));
     },
     async setCourseAssessmentGate(courseId, enabled) {
+      if (currentUser) {
+        await setCourseAssessmentGateOnBackend(courseId, enabled);
+        await refreshBackendState();
+        return;
+      }
+
       setState((current) => ({
         ...current,
         courses: current.courses.map((course) =>
@@ -1122,26 +1130,24 @@ export function MockLmsProvider({ children }: { children: ReactNode }) {
       });
     },
     async sendCustomEmail(to: string, subject: string, body: string) {
-      try {
-        const token = currentUser ? currentUser.token : localStorage.getItem("auth_token");
-        const response = await fetch("http://127.0.0.1:8000/api/v1/emails/send", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({ to, subject, body })
-        });
-        const result = await response.json();
-        if (result.success) {
-          alert("Email sent successfully via SMTP backend.");
-        } else {
-          alert(result.message || "Failed to send email.");
+      if (currentUser) {
+        try {
+          const result = await sendEmailOnBackend(to, subject, body);
+          if (result.success) {
+            alert("Email sent successfully via SMTP backend.");
+          } else {
+            alert(result.message || "Failed to send email.");
+          }
+        } catch (error) {
+          console.error("Email error:", error);
+          alert("Error sending email via SMTP.");
         }
-      } catch {
-        alert("Error sending email via SMTP.");
+        return;
       }
+
+      // Fallback for mock mode
+      console.log("Mock Email Sent:", { to, subject, body });
+      alert(`Demo Mode: Email to ${to} simulation successful.`);
     }
   }), [authReady, currentUser, derivedState, state]);
 

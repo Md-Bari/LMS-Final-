@@ -941,3 +941,21 @@ export async function downloadAuthenticatedFile(path: string, fallbackFilename: 
   anchor.click();
   window.URL.revokeObjectURL(url);
 }
+
+export async function setCourseAssessmentGateOnBackend(courseId: string, enabled: boolean) {
+  const response = await apiFetch(`/api/v1/courses/${courseId}/assessment-gate`, {
+    method: "POST",
+    body: JSON.stringify({ enabled })
+  });
+
+  return unwrapResponse<{ data: unknown }>(response);
+}
+
+export async function sendEmailOnBackend(to: string, subject: string, body: string) {
+  const response = await apiFetch("/api/v1/emails/send", {
+    method: "POST",
+    body: JSON.stringify({ to, subject, body })
+  });
+
+  return unwrapResponse<{ success: boolean; message: string }>(response);
+}

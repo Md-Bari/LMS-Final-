@@ -421,6 +421,7 @@ class LmsSupport
                 ->values()
                 ->map(fn (CourseModule $module): array => self::serializeModule($module, $viewer))
                 ->all(),
+            'assessmentGateEnabled' => (bool) $course->assessment_gate_enabled,
         ];
     }
 
